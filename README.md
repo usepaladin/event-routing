@@ -1,6 +1,8 @@
-# Event Router Service\*
+# Event Router Service
 
-The **Event Router Service** is responsible for **consuming tenant-specific events from the global Kafka broker** and **pushing them to the appropriate message broker (Kafka, RabbitMQ, MQTT, etc.) configured by the tenant**. This ensures **real-time, low-latency message routing** while maintaining **tenant isolation and security**.
+The **Event Router Service** is responsible for **consuming tenant-specific events from the global Kafka broker** and *
+*pushing them to the appropriate message broker (Kafka, RabbitMQ, MQTT, etc.) configured by the tenant**. This ensures *
+*real-time, low-latency message routing** while maintaining **tenant isolation and security**.
 
 ---
 
