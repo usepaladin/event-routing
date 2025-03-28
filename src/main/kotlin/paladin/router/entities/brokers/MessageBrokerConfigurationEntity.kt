@@ -1,12 +1,12 @@
-package paladin.eventrouter.entities.brokers
+package paladin.router.entities.brokers
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
-import paladin.eventrouter.enums.configuration.BrokerType
-import paladin.eventrouter.enums.configuration.BrokerFormat
+import paladin.router.enums.configuration.BrokerType
+import paladin.router.enums.configuration.BrokerFormat
 import java.time.ZonedDateTime
 import java.util.*
 

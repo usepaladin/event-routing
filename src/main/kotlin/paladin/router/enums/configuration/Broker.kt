@@ -1,4 +1,4 @@
-package paladin.eventrouter.enums.configuration
+package paladin.router.enums.configuration
 
 enum class BrokerType {
     KAFKA,
