@@ -26,6 +26,7 @@ repositories {
 }
 
 extra["springCloudVersion"] = "2024.0.1"
+val solaceSpringCloudVersion by extra("4.7.0")
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -36,6 +37,19 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
     implementation("org.springframework.cloud:spring-cloud-stream")
+    implementation("org.springframework.boot:spring-boot-starter-amqp")
+    implementation("org.springframework.boot:spring-boot-starter-artemis")
+    implementation("org.springframework.boot:spring-boot-starter-pulsar")
+    implementation("org.springframework.boot:spring-boot-starter-activemq")
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
+    implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
+    implementation("org.springframework.pulsar:spring-pulsar-spring-cloud-stream-binder")
+    implementation("com.solace.spring.cloud:spring-cloud-starter-stream-solace")
+    implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.2")
+    testImplementation("org.springframework.amqp:spring-rabbit-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -47,6 +61,7 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+        mavenBom("com.solace.spring.cloud:solace-spring-cloud-bom:$solaceSpringCloudVersion")
     }
 }
 
