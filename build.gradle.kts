@@ -1,3 +1,4 @@
+
 plugins {
     kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.25"
@@ -23,18 +24,24 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven("https://packages.confluent.io/maven/")
 }
 
 extra["springCloudVersion"] = "2024.0.1"
 val solaceSpringCloudVersion by extra("4.7.0")
 
 dependencies {
+    implementation("org.apache.avro:avro:1.12.0")
+    implementation("io.confluent:kafka-avro-serializer:7.9.0")
+    implementation("io.confluent:kafka-streams-avro-serde:7.9.0")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
+    implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
     implementation("org.springframework.cloud:spring-cloud-stream")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
@@ -44,9 +51,11 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
-    implementation("org.springframework.pulsar:spring-pulsar-spring-cloud-stream-binder")
+//    implementation("org.springframework.pulsar:spring-pulsar-spring-cloud-stream-binder")
     implementation("com.solace.spring.cloud:spring-cloud-starter-stream-solace")
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.2")
+    implementation("org.apache.kafka:kafka-streams")
+    implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka-streams")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
 

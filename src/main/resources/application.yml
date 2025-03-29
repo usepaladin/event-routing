@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: router
+  kafka:
+    streams:
+        application-id: router
+        bootstrap-servers: localhost:9092
+        default:
+            key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+            value-serde: org.springframework.kafka.support.serializer.JsonSerializer
+            processing-guarantee: exactly_once
+        properties:
+            application:
+            id: router
+            default:
+            key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+            value-serde: org.springframework.kafka.support.serializer.JsonSerializer
+            schema-registry-url: http://localhost:8081
+
+

@@ -1,6 +1,6 @@
-package paladin.router.models.configuration
+package paladin.router.models.configuration.brokers
 
-import paladin.router.entities.brokers.MessageBrokerConfigurationEntity
+import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 import paladin.router.enums.configuration.BrokerFormat
 import paladin.router.enums.configuration.BrokerType
 import paladin.router.pojo.configuration.brokers.BrokerConfig
@@ -15,8 +15,6 @@ data class MessageBroker(
     val brokerType: BrokerType,
     val brokerFormat: BrokerFormat,
     val defaultBroker: Boolean,
-    val brokerConfig: BrokerConfig,
-    val authConfig: EncryptedBrokerAuthConfig,
     val createdAt: ZonedDateTime,
     val updatedAt: ZonedDateTime
 ) {
@@ -29,9 +27,7 @@ data class MessageBroker(
                 brokerFormat = entity.brokerFormat,
                 defaultBroker = entity.defaultBroker,
                 createdAt = entity.createdAt,
-                brokerConfig = BrokerConfigFactory.parseBrokerConfig(entity.brokerType, entity.brokerConfig),
-                updatedAt = entity.updatedAt,
-                authConfig = authConfig
+                updatedAt = entity.updatedAt
             )
         }
     }

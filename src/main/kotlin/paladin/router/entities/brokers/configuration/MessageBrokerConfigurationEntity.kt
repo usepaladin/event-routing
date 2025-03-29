@@ -1,4 +1,4 @@
-package paladin.router.entities.brokers
+package paladin.router.entities.brokers.configuration
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -14,9 +14,9 @@ import java.util.*
 @Entity
 @Table(
     name = "message_brokers",
-    schema = "database_discovery",
+    schema = "event_routing",
     uniqueConstraints = [
-        UniqueConstraint(columnNames = ["binder_name"])
+        UniqueConstraint(columnNames = ["broker_name"])
     ],
     indexes = [
         Index(name = "idx_message_brokers_binder_name", columnList = "binder_name")
