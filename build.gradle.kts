@@ -25,6 +25,14 @@ configurations {
 repositories {
     mavenCentral()
     maven("https://packages.confluent.io/maven/")
+    maven{
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/usepaladin/avro-schemas")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
+            password = project.findProperty("gpr.token") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 extra["springCloudVersion"] = "2024.0.1"
@@ -41,6 +49,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
     implementation("org.slf4j:slf4j-api:2.0.16")
+    implementation("paladin.avro:avro-models:0.0.1-SNAPSHOT")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
     implementation("org.springframework.cloud:spring-cloud-stream")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
