@@ -4,5 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "encryption")
 data class EncryptionConfigurationProperties(
-    val key: String
+    val requireDataEncryption: Boolean,
+    val key: String?
 )

@@ -1,20 +1,24 @@
+router:
+  server-instance-id: ${SERVER_INSTANCE_ID:}
+  tenant-id: ${TENANT_ID:}
 spring:
   application:
-    name: router
+    name: event-router${TENANT_ID:}
   kafka:
-    streams:
-        application-id: router
-        bootstrap-servers: localhost:9092
-        default:
-            key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
-            value-serde: org.springframework.kafka.support.serializer.JsonSerializer
-            processing-guarantee: exactly_once
-        properties:
-            application:
-            id: router
-            default:
-            key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
-            value-serde: org.springframework.kafka.support.serializer.JsonSerializer
-            schema-registry-url: http://localhost:8081
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    listener:
+      type: single
+      concurrency: 3
+    consumer:
+      group-id: event-router-tenant-${TENANT_ID:}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+        specific.avro.reader: true
+encryption:
+  require-data-encryption: true
+  key: ${ENCRYPTION_KEY:}
 
 
