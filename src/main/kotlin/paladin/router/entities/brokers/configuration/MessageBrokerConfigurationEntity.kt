@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
-import paladin.router.enums.configuration.BrokerType
-import paladin.router.enums.configuration.BrokerFormat
+import paladin.router.enums.configuration.Broker.BrokerType
+import paladin.router.enums.configuration.Broker.BrokerFormat
 import java.time.ZonedDateTime
 import java.util.*
 

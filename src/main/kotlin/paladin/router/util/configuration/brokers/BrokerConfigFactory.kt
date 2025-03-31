@@ -1,6 +1,6 @@
 package paladin.router.util.configuration.brokers
 
-import paladin.router.enums.configuration.BrokerType
+import paladin.router.enums.configuration.Broker
 import paladin.router.pojo.configuration.brokers.BrokerConfig
 import paladin.router.pojo.configuration.brokers.KafkaBrokerConfig
 import paladin.router.pojo.configuration.brokers.RabbitBrokerConfig
@@ -8,9 +8,9 @@ import paladin.router.pojo.configuration.brokers.SQSBrokerConfig
 
 
 object BrokerConfigFactory {
-    fun parseBrokerConfig(brokerType: BrokerType, properties: Map<String, Any>): BrokerConfig {
+    fun parseBrokerConfig(brokerType: Broker.BrokerType, properties: Map<String, Any>): BrokerConfig {
         return when (brokerType) {
-            BrokerType.KAFKA -> KafkaBrokerConfig(
+            Broker.BrokerType.KAFKA -> KafkaBrokerConfig(
                 bootstrapServers = properties["bootstrapServers"] as String,
                 clientId = properties["clientId"] as String,
                 groupId = properties["groupId"] as String?,
@@ -21,7 +21,7 @@ object BrokerConfigFactory {
                 acks = properties["acks"] as String
             )
 
-            BrokerType.RABBIT -> RabbitBrokerConfig(
+            Broker.BrokerType.RABBIT -> RabbitBrokerConfig(
                 host = properties["host"] as String,
                 port = properties["port"] as Int,
                 virtualHost = properties["virtualHost"] as String,
@@ -30,7 +30,7 @@ object BrokerConfigFactory {
                 prefetchCount = properties["prefetchCount"] as Int
             )
 
-            BrokerType.SQS -> SQSBrokerConfig(
+            Broker.BrokerType.SQS -> SQSBrokerConfig(
                 region = properties["region"] as String,
                 queueUrl = properties["queueUrl"] as String
             )

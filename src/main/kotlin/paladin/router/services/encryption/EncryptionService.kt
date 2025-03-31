@@ -22,7 +22,7 @@ class EncryptionService(
 ) {
 
     //Todo: Migrate to Kubernetes Secret management
-    private var encryptionKeyBase64: String = encryptionConfigurationProperties.key
+    private var encryptionKeyBase64: String? = encryptionConfigurationProperties.key
 
     private val algorithm = "AES"
     private val cipherTransformation = "AES/GCM/NoPadding" // AES in Galois/Counter Mode (GCM)

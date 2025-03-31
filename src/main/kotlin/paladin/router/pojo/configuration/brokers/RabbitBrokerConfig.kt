@@ -1,9 +1,9 @@
 package paladin.router.pojo.configuration.brokers
 
-import paladin.router.enums.configuration.BrokerType
+import paladin.router.enums.configuration.Broker
 
 data class RabbitBrokerConfig(
-    override val brokerType: BrokerType = BrokerType.RABBIT,
+    override val brokerType: Broker.BrokerType = Broker.BrokerType.RABBIT,
     val host: String,
     val port: Int = 5672,
     val virtualHost: String = "/",

@@ -1,9 +1,9 @@
 package paladin.router.models.dispatch
 
 import org.apache.avro.specific.SpecificRecord
+import paladin.avro.database.ChangeEventData
+import paladin.avro.database.DatabaseEventRouterValueAv
 import paladin.router.enums.configuration.Broker
-import paladin.router.models.avro.database.ChangeEventData
-import paladin.router.models.avro.database.DatabaseEventRouterValueAv
 
 data class DispatchEvent <T: SpecificRecord>(
     val brokerName: String,
@@ -17,8 +17,8 @@ data class DispatchEvent <T: SpecificRecord>(
         fun fromEvent(value: DatabaseEventRouterValueAv): DispatchEvent<ChangeEventData>{
             return DispatchEvent<ChangeEventData>(
                 brokerName = value.brokerName,
-                brokerType = Broker.Factory.fromAvro(value.brokerType),
-                brokerFormat = value.brokerFormat,
+                brokerType = Broker.fromAvro(value.brokerType),
+                brokerFormat = Broker.fromAvro(value.brokerFormat),
                 topicSchema = """""",
                 payload = value.payload
             )

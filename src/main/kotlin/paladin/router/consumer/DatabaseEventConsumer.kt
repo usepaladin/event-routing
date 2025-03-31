@@ -6,8 +6,10 @@ import org.springframework.kafka.support.KafkaHeaders
 import org.springframework.messaging.handler.annotation.Header
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Service
+import paladin.avro.database.ChangeEventData
 import paladin.router.configuration.properties.CoreConfigurationProperties
-import paladin.router.models.avro.database.DatabaseEventRouterValueAv
+import paladin.avro.database.DatabaseEventRouterValueAv
+import paladin.router.models.dispatch.DispatchEvent
 import paladin.router.services.dispatch.DispatchService
 
 @Service
@@ -33,6 +35,9 @@ class DatabaseEventConsumer(
             return
         }
 
+        // Dispatch event to the appropriate message broker
+        val dispatchEvent: DispatchEvent<ChangeEventData> = DispatchEvent.fromEvent(event)
+        dispatchService.dispatchEvent(dispatchEvent)
     }
 
 

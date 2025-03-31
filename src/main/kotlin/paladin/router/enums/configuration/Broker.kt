@@ -16,20 +16,20 @@ class Broker{
     }
 
     companion object Factory{
-        fun fromAvro(value: paladin.router.models.avro.database.BrokerFormat): BrokerFormat{
+        fun fromAvro(value: paladin.avro.database.BrokerFormat): BrokerFormat{
             return when(value){
-                paladin.router.models.avro.database.BrokerFormat.JSON -> BrokerFormat.JSON
-                paladin.router.models.avro.database.BrokerFormat.AVRO -> BrokerFormat.AVRO
-                paladin.router.models.avro.database.BrokerFormat.PROTOBUF -> BrokerFormat.PROTOBUF
+                paladin.avro.database.BrokerFormat.JSON -> BrokerFormat.JSON
+                paladin.avro.database.BrokerFormat.AVRO -> BrokerFormat.AVRO
+                paladin.avro.database.BrokerFormat.PROTOBUF -> BrokerFormat.PROTOBUF
             }
         }
 
-        fun fromAvro(value: paladin.router.models.avro.database.BrokerType): BrokerType{
+        fun fromAvro(value: paladin.avro.database.BrokerType): BrokerType{
             return when(value){
-                paladin.router.models.avro.database.BrokerType.KAFKA -> BrokerType.KAFKA
-                paladin.router.models.avro.database.BrokerType.RABBITMQ -> BrokerType.RABBIT
-                paladin.router.models.avro.database.BrokerType.SQS -> BrokerType.SQS
-                paladin.router.models.avro.database.BrokerType.PULSAR -> BrokerType.PULSAR
+                paladin.avro.database.BrokerType.KAFKA -> BrokerType.KAFKA
+                paladin.avro.database.BrokerType.RABBITMQ -> BrokerType.RABBIT
+                paladin.avro.database.BrokerType.SQS -> BrokerType.SQS
+                paladin.avro.database.BrokerType.PULSAR -> BrokerType.PULSAR
                 // TODO: FIX OOPSIES
                 else -> BrokerType.MQTT
             }
