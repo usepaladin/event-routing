@@ -1,4 +1,4 @@
-package paladin.router.models.dispatch
+package paladin.router.pojo.dispatch
 
 import org.apache.avro.specific.SpecificRecord
 import paladin.avro.database.ChangeEventData
@@ -14,7 +14,7 @@ data class DispatchEvent <T: SpecificRecord>(
 ){
     companion object Factory{
 
-        fun fromEvent(value: DatabaseEventRouterValueAv): DispatchEvent<ChangeEventData>{
+        fun fromEvent(value: DatabaseEventRouterValueAv): DispatchEvent<ChangeEventData> {
             return DispatchEvent<ChangeEventData>(
                 brokerName = value.brokerName,
                 brokerType = Broker.fromAvro(value.brokerType),
