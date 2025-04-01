@@ -10,7 +10,7 @@ data class KafkaDispatcher <T, V>(
     override val broker: MessageBroker,
     override val config: KafkaBrokerConfig,
     override val authConfig: EncryptedBrokerAuthConfig,
-): MessageDispatcher<KafkaProducer<T, V>>()  {
+): MessageDispatcher()  {
 
     private var producer: KafkaProducer<T, V>? = null
 

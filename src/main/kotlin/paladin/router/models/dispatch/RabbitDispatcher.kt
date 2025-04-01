@@ -10,7 +10,7 @@ data class RabbitDispatcher(
     override val broker: MessageBroker,
     override val config: RabbitBrokerConfig,
     override val authConfig: EncryptedBrokerAuthConfig,
-): MessageDispatcher<RabbitTemplate>() {
+): MessageDispatcher() {
 
     private var producer: RabbitTemplate? = null
 

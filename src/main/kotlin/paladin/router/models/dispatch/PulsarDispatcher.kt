@@ -11,7 +11,7 @@ data class PulsarDispatcher<T>(
     override val broker: MessageBroker,
     override val config: PulsarBrokerConfig,
     override val authConfig: EncryptedBrokerAuthConfig,
-): MessageDispatcher<PulsarTemplate<T>>() {
+): MessageDispatcher() {
 
     private var producer: PulsarTemplate<T>? = null
 

@@ -10,7 +10,7 @@ data class SQSDispatcher(
     override val broker: MessageBroker,
     override val config: SQSBrokerConfig,
     override val authConfig: EncryptedBrokerAuthConfig,
-):MessageDispatcher<QueueMessagingTemplate>() {
+):MessageDispatcher() {
 
     private var producer: QueueMessagingTemplate? = null
 
