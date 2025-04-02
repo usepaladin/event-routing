@@ -9,6 +9,6 @@ abstract class MessageDispatcher{
     abstract val config: BrokerConfig
     abstract val authConfig: EncryptedBrokerAuthConfig
     abstract fun dispatch(payload: Any)
-    abstract fun regenerateProducer()
-    abstract fun validateProducerConfiguration()
+    abstract fun build()
+    abstract fun validate()
 }

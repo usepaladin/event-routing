@@ -3,7 +3,7 @@ package paladin.router.models.configuration.brokers
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 import paladin.router.pojo.configuration.brokers.BrokerConfig
 import paladin.router.pojo.configuration.brokers.EncryptedBrokerAuthConfig
-import paladin.router.util.configuration.brokers.BrokerConfigFactory
+import paladin.router.util.factory.BrokerConfigFactory
 
 class BrokerConfiguration (
     val brokerConfig: BrokerConfig,

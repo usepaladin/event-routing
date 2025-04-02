@@ -18,11 +18,11 @@ data class RabbitDispatcher(
         TODO()
     }
 
-    override fun regenerateProducer() {
+    override fun build() {
         TODO("Not yet implemented")
     }
 
-    override fun validateProducerConfiguration() {
+    override fun validate() {
         TODO("Not yet implemented")
     }
 }

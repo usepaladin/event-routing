@@ -1,4 +1,4 @@
-package paladin.router.util.configuration.brokers
+package paladin.router.util.factory
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.pojo.configuration.brokers.BrokerConfig
