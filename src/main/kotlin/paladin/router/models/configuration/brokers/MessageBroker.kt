@@ -3,7 +3,6 @@ package paladin.router.models.configuration.brokers
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 
 import paladin.router.enums.configuration.Broker
-import paladin.router.pojo.configuration.brokers.EncryptedBrokerAuthConfig
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -17,7 +16,7 @@ data class MessageBroker(
     val updatedAt: ZonedDateTime
 ) {
     companion object {
-        fun factory(entity: MessageBrokerConfigurationEntity, authConfig: EncryptedBrokerAuthConfig): MessageBroker {
+        fun factory(entity: MessageBrokerConfigurationEntity): MessageBroker {
             return MessageBroker(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
                 brokerName = entity.brokerName,

@@ -19,8 +19,8 @@ class BrokerService(
     fun updateBroker(){
 
     }
-    fun removeBroker(){
-        dispatchService.removeDispatcher("brokerName")
+    fun removeBroker(broker: String){
+        dispatchService.removeDispatcher(broker)
     }
 
 }

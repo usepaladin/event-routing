@@ -1,52 +1,57 @@
 package paladin.router.util.factory
 
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.shaded.com.google.protobuf.DynamicMessage
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.models.dispatch.*
-import paladin.router.pojo.configuration.brokers.*
+import paladin.router.pojo.configuration.brokers.auth.*
+import paladin.router.pojo.configuration.brokers.core.BrokerConfig
+import paladin.router.pojo.configuration.brokers.core.*
 import paladin.router.pojo.dispatch.MessageDispatcher
 
 object MessageDispatcherFactory {
+    fun fromBrokerConfig(broker: MessageBroker, config: BrokerConfig, authConfig: EncryptedBrokerConfig): MessageDispatcher{
+        return when{
+            config is KafkaBrokerConfig && authConfig is KafkaEncryptedConfig -> {
+                getSpecificKafkaDispatcher(broker, authConfig, config)
+            }
 
-    fun fromBrokerConfig(broker: MessageBroker, authConfig: EncryptedBrokerAuthConfig, config: BrokerConfig): MessageDispatcher{
-        when(config){
-            is SQSBrokerConfig -> {
-                return SQSDispatcher(
+            config is RabbitBrokerConfig && authConfig is RabbitEncryptedConfig -> {
+                RabbitDispatcher(
                     broker = broker,
                     config = config,
                     authConfig = authConfig
                 )
             }
-            is KafkaBrokerConfig -> {
-                return getSpecificKafkaDispatcher(broker, authConfig, config)
-            }
-            is RabbitBrokerConfig -> {
-                return RabbitDispatcher(
+
+            config is SQSBrokerConfig && authConfig is SQSEncryptedConfig -> {
+                SQSDispatcher(
                     broker = broker,
                     config = config,
                     authConfig = authConfig
                 )
             }
-            is MQTTBrokerConfig -> {
-                return MQTTDispatcher(
+
+            config is MQTTBrokerConfig && authConfig is MQTTEncryptedConfig -> {
+                MQTTDispatcher(
                     broker = broker,
                     config = config,
                     authConfig = authConfig
                 )
             }
-            is PulsarBrokerConfig -> {
-                return getSpecificPulsarDispatcher(broker, authConfig, config)
+
+            config is PulsarBrokerConfig && authConfig is PulsarEncryptedConfig -> {
+                getSpecificPulsarDispatcher(broker, authConfig, config)
             }
+
             else -> {
-                throw IllegalArgumentException("Unsupported broker config type")
+                throw IllegalArgumentException("Unsupported broker configuration")
             }
         }
     }
 
-    private fun getSpecificKafkaDispatcher(broker: MessageBroker, authConfig: EncryptedBrokerAuthConfig, config: KafkaBrokerConfig ): KafkaDispatcher<*,*>{
+    private fun getSpecificKafkaDispatcher(broker: MessageBroker, authConfig: KafkaEncryptedConfig, config: KafkaBrokerConfig): KafkaDispatcher<*,*>{
         return when(broker.brokerFormat){
             Broker.BrokerFormat.AVRO -> {
                 KafkaDispatcher<String, GenericRecord>(
@@ -72,7 +77,7 @@ object MessageDispatcherFactory {
         }
     }
 
-    private fun getSpecificPulsarDispatcher(broker: MessageBroker, authConfig: EncryptedBrokerAuthConfig, config: PulsarBrokerConfig): PulsarDispatcher<*>{
+    private fun getSpecificPulsarDispatcher(broker: MessageBroker, authConfig: PulsarEncryptedConfig, config: PulsarBrokerConfig): PulsarDispatcher<*>{
         return when(broker.brokerFormat){
             Broker.BrokerFormat.AVRO -> {
                 PulsarDispatcher<GenericRecord>(

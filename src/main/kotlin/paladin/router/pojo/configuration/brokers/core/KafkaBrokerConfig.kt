@@ -1,10 +1,9 @@
-package paladin.router.pojo.configuration.brokers
+package paladin.router.pojo.configuration.brokers.core
 
 import paladin.router.enums.configuration.Broker
 
 data class KafkaBrokerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.KAFKA,
-    val bootstrapServers: String,
     val clientId: String,
     val groupId: String?,
     val enableAutoCommit: Boolean = false,

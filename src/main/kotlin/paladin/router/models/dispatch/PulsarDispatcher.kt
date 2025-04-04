@@ -1,21 +1,20 @@
 package paladin.router.models.dispatch
 
-import org.apache.kafka.clients.producer.KafkaProducer
 import org.springframework.pulsar.core.PulsarTemplate
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.EncryptedBrokerAuthConfig
-import paladin.router.pojo.configuration.brokers.PulsarBrokerConfig
+import paladin.router.pojo.configuration.brokers.auth.PulsarEncryptedConfig
+import paladin.router.pojo.configuration.brokers.core.PulsarBrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
 
 data class PulsarDispatcher<T>(
     override val broker: MessageBroker,
     override val config: PulsarBrokerConfig,
-    override val authConfig: EncryptedBrokerAuthConfig,
+    override val authConfig: PulsarEncryptedConfig,
 ): MessageDispatcher() {
 
     private var producer: PulsarTemplate<T>? = null
 
-    override fun dispatch(payload: Any) {
+    override fun <K, V> dispatch(key: K, payload: V) {
         TODO("Not yet implemented")
     }
 
