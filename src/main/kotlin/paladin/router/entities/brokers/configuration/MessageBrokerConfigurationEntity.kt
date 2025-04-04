@@ -2,11 +2,15 @@ package paladin.router.entities.brokers.configuration
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.convertValue
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker.BrokerType
 import paladin.router.enums.configuration.Broker.BrokerFormat
+import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -71,4 +75,22 @@ data class MessageBrokerConfigurationEntity(
 
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     var updatedAt: ZonedDateTime = ZonedDateTime.now()
-)
+){
+    companion object Factory{
+        fun fromConfiguration(messageBroker: MessageBroker, encryptedConfig: String, brokerConfig: BrokerConfig): MessageBrokerConfigurationEntity {
+            val objectMapper = ObjectMapper()
+
+            return MessageBrokerConfigurationEntity(
+                id = messageBroker.id,
+                brokerName = messageBroker.brokerName,
+                brokerType = messageBroker.brokerType,
+                brokerFormat = messageBroker.brokerFormat,
+                brokerConfigEncrypted = encryptedConfig,
+                brokerConfig = objectMapper.convertValue(brokerConfig),
+                defaultBroker = messageBroker.defaultBroker,
+                createdAt = messageBroker.createdAt,
+                updatedAt = messageBroker.updatedAt
+            )
+        }
+    }
+}
