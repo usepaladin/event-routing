@@ -35,4 +35,12 @@ class DispatchService(private val logger: KLogger) {
         clientBrokers.remove(brokerName)
     }
 
+    fun getDispatcher(brokerName: String): MessageDispatcher? {
+        return clientBrokers[brokerName]
+    }
+
+    fun getAllDispatchers(): List<MessageDispatcher> {
+        return clientBrokers.values.toList()
+    }
+
 }

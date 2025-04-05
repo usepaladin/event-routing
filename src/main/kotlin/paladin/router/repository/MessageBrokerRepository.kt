@@ -5,4 +5,5 @@ import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationE
 import java.util.UUID
 
 interface MessageBrokerRepository: JpaRepository<MessageBrokerConfigurationEntity, UUID> {
+    fun findByBrokerName(brokerName: String): MessageBrokerConfigurationEntity?
 }

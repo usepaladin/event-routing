@@ -1,16 +1,34 @@
 package paladin.router.controller
 
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.pojo.configuration.brokers.BrokerCreationRequest
+import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.services.brokers.BrokerService
 
 @RestController
 @RequestMapping("/api/broker")
-class BrokerConfigurationController {
+class BrokerConfigurationController(
+    private val brokerService: BrokerService
+) {
+    @PostMapping("/")
+    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatcher>{
+        val (brokerDetails: MessageBroker, brokerConfig: Map<String, Any>) = broker;
+        val createdBroker: MessageDispatcher = brokerService.createBroker(brokerDetails, brokerConfig)
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdBroker)
+    }
 
-    fun createBroker(){}
-    fun deleteBroker(){}
-    fun updateBroker(){}
-    fun getBrokers(){}
-    fun getBroker(@PathVariable brokerName: String){}
+    @DeleteMapping("/{brokerName}")
+    fun deleteBroker(@PathVariable brokerName: String): ResponseEntity<Unit>{
+        brokerService.deleteBroker(brokerName)
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+    }
+
+    @PutMapping("/")
+    fun updateBroker(@RequestBody dispatcher: MessageDispatcher): ResponseEntity<MessageDispatcher>{
+        val updatedBroker: MessageDispatcher = brokerService.updateBroker(dispatcher)
+        return ResponseEntity.status(HttpStatus.OK).body(updatedBroker)
+    }
 }

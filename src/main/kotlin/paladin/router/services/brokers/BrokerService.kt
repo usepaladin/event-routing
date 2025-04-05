@@ -88,11 +88,31 @@ class BrokerService(
         }
     }
 
-    fun updateBrokerConfiguraton(){
+    /**
+     * Updates a Message broker of a particular specified type, with updated broker configuration properties
+     * relevant to that specific broker. Will then re-validate the broker's configuration to ensure
+     * that the broker is fully functional with the correct attached configuration and connection details
+     *
+     * @param dispatcher - The message dispatcher with updated configuration settings to be applied and saved
+     * in the database
+
+     */
+    fun updateBroker(dispatcher: MessageDispatcher): MessageDispatcher{
+        TODO()
+    }
+
+    /**
+     * Removes the broker from the database, and as an active message dispatcher.
+     * It will be assumed that the delete functionality will not be accessible until all references
+     * to this broker have been removed, and moved to another broker to avoid message loss
+     *
+     * @param brokerName String - The name of the broker to be deleted
+     *
+     * @throws IllegalArgumentException - If the broker does not exist
+     *
+     */
+    fun deleteBroker(brokerName: String): Boolean{
+        TODO()
 
     }
-    fun removeBroker(broker: String){
-        dispatchService.removeDispatcher(broker)
-    }
-
 }
