@@ -1,10 +1,12 @@
 package paladin.router.services.brokers
 
 import io.github.oshai.kotlinlogging.KLogger
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.stereotype.Service
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
-import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
@@ -24,8 +26,55 @@ class BrokerService(
     private val dispatchService: DispatchService,
     private val encryptionService: EncryptionService,
     private val logger: KLogger,
-    private val serviceEncryptionConfig: EncryptionConfigurationProperties
-    ) {
+    private val serviceEncryptionConfig: EncryptionConfigurationProperties,
+    private val kafkaListenerEndpointRegistry: KafkaListenerEndpointRegistry
+    ): ApplicationRunner {
+
+    /**
+     * On service start, before Kafka listeners begin to consume messages. The application
+     * will populate all message brokers from the database and build Message dispatchers.
+     */
+    override fun run(args: ApplicationArguments?) {
+        populateDispatchers()
+    }
+
+    /**
+     * Populates all message brokers from the database and builds Message dispatchers.
+     * On completion, Kafka listeners will be activated to begin consuming messages and routing
+     * them to their correct event broker
+     */
+    private fun populateDispatchers(): Unit{
+        // After brokers have been populated, allow Listeners to consume messages and route messages
+        val brokers: List<MessageBrokerConfigurationEntity> = messageBrokerRepository.findAll()
+        brokers.forEach { entity ->
+            val broker: MessageBroker = MessageBroker.fromEntity(entity)
+            val encryptedConfig: Map<String, Any> = encryptionService.decryptObject(entity.brokerConfigEncrypted)?:
+                throw IOException("Failed to decrypt broker configuration for broker: ${broker.brokerName}")
+            // Conjoin properties and pass through Broker config factory
+            val properties: Map<String, Any> = entity.brokerConfig + encryptedConfig
+            val (config: BrokerConfig, authConfig: EncryptedBrokerConfig)  = BrokerConfigFactory.fromConfigurationProperties(entity.brokerType, properties)
+            val messageDispatcher: MessageDispatcher = MessageDispatcherFactory.fromBrokerConfig(broker, config, authConfig)
+            // Store the dispatcher in the dispatch service to route messages generated from other services
+            dispatchService.setDispatcher(
+                broker.brokerName,
+                messageDispatcher
+            )
+        }
+
+        activateListeners()
+    }
+
+    /**
+     * Starts up all Kafka listeners which will allow them to begin consuming all messages
+     * within the queue and route them to their correct event broker
+     */
+    private fun activateListeners(){
+        kafkaListenerEndpointRegistry.listenerContainers.forEach { container ->
+            if (!container.isRunning) {
+                container.start()
+            }
+        }
+    }
 
     /**
      * Generates a new message broker with predefined configurations of the specific broker type specified

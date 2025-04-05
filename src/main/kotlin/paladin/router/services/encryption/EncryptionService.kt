@@ -1,5 +1,6 @@
 package paladin.router.services.encryption
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KLogger
 import org.springframework.stereotype.Service
@@ -35,9 +36,19 @@ class EncryptionService(
         return encrypt(dataString)
     }
 
+    fun decryptObject(encryptedData: String): Map<String, Any>? {
+        val decryptedString = decrypt(encryptedData)
+        return objectMapper.readValue(decryptedString, object : TypeReference<Map<String, Any>>() {})
+    }
+
     fun <T> decryptObject(encryptedData: String, parsedClass: Class<T>): T? {
         val decryptedString = decrypt(encryptedData)
         return objectMapper.readValue(decryptedString, parsedClass)
+    }
+
+    fun <T> decryptObject(encryptedData: String, typeReference: TypeReference<T>): T? {
+        val decryptedString = decrypt(encryptedData)
+        return objectMapper.readValue(decryptedString, typeReference)
     }
 
     /**

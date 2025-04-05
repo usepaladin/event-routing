@@ -15,8 +15,8 @@ data class MessageBroker(
     val createdAt: ZonedDateTime,
     val updatedAt: ZonedDateTime
 ) {
-    companion object {
-        fun factory(entity: MessageBrokerConfigurationEntity): MessageBroker {
+    companion object Factory {
+        fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageBroker {
             return MessageBroker(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
                 brokerName = entity.brokerName,

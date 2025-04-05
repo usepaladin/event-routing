@@ -9,6 +9,7 @@ spring:
     listener:
       type: single
       concurrency: 3
+      auto-startup: false
     consumer:
       group-id: event-router-tenant-${TENANT_ID:}
       auto-offset-reset: earliest
