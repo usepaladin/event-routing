@@ -103,11 +103,9 @@ class BrokerService(
                 config = brokerConfig,
                 authConfig = encryptedConfig
             )
-            dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connecting)
             // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
             dispatcher.validate()
-            dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connected)
-
+            dispatcher.build()
             // Encrypt relevant broker configuration properties, and format broker object for database storage
             val encryptedBrokerConfig:String = if(serviceEncryptionConfig.requireDataEncryption){
                 encryptionService.encryptObject(encryptedConfig)?: throw IOException("Failed to encrypt broker configuration")
@@ -144,7 +142,7 @@ class BrokerService(
      * relevant to that specific broker. Will then re-validate the broker's configuration to ensure
      * that the broker is fully functional with the correct attached configuration and connection details
      *
-     * @param dispatcher - The message dispatcher with updated configuration settings to be applied and saved
+     * @param updatedDispatcher - The message dispatcher with updated configuration settings to be applied and saved
      * in the database
 
      */
@@ -153,7 +151,7 @@ class BrokerService(
         val dispatcher: MessageDispatcher = dispatchService.getDispatcher(updatedDispatcher.broker.brokerName)
             ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedDispatcher.broker.brokerName}")
 
-        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Disconnected)
+        dispatcher.updateConnectionState(MessageDispatcher.MessageDispatcherState.Disconnected)
 
         // Update Broker and associated configuration properties
         // Dispatch properties must be static to adhere to inheritance, meaning internal properties need to be individually updated
@@ -161,12 +159,15 @@ class BrokerService(
         dispatcher.config.updateConfiguration(updatedDispatcher.config)
         dispatcher.authConfig.updateConfiguration(updatedDispatcher.authConfig)
 
-        // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
-        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connecting)
         dispatcher.validate()
-        // Rebuild Producer with updated Properties
+        // Rebuild Producer with updated Properties,
         dispatcher.build()
-        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connected)
+
+        val currentState: MessageDispatcher.MessageDispatcherState = dispatcher.connectionState.value
+        if(currentState is MessageDispatcher.MessageDispatcherState.Error){
+            // Throw the exception that was generated during connection failure
+            throw IOException("Failed to connect to broker: ${dispatcher.broker.brokerName} => Error message: ${currentState.exception.message}" )
+        }
 
         // Save updated configuration properties to database
         val encryptedBrokerConfig: String = if(serviceEncryptionConfig.requireDataEncryption){

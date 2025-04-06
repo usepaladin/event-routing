@@ -1,5 +1,7 @@
 package paladin.router.models.dispatch
 
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.auth.SQSEncryptedConfig
@@ -14,11 +16,18 @@ data class SQSDispatcher(
 
     private var producer: QueueMessagingTemplate? = null
 
+    override val logger: KLogger
+        get() = KotlinLogging.logger {  }
+
     override fun <V> dispatch(topic: String, payload: V, schema: String?) {
         TODO("Not yet implemented")
     }
 
     override fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun testConnection() {
         TODO("Not yet implemented")
     }
 
