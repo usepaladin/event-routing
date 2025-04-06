@@ -11,7 +11,8 @@ data class MessageBroker(
     val id: UUID,
     val brokerName: String,
     val brokerType: Broker.BrokerType,
-    val brokerFormat: Broker.BrokerFormat,
+    val valueSerializationFormat: Broker.BrokerFormat,
+    val keySerializationFormat: Broker.BrokerFormat?,
     var defaultBroker: Boolean,
     val createdAt: ZonedDateTime,
     var updatedAt: ZonedDateTime
@@ -30,7 +31,8 @@ data class MessageBroker(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
                 brokerName = entity.brokerName,
                 brokerType = entity.brokerType,
-                brokerFormat = entity.brokerFormat,
+                keySerializationFormat = entity.keyFormat,
+                valueSerializationFormat = entity.valueFormat,
                 defaultBroker = entity.defaultBroker,
                 createdAt = entity.createdAt,
                 updatedAt = entity.updatedAt

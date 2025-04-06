@@ -8,9 +8,11 @@ import paladin.router.enums.configuration.Broker
 data class DispatchEvent <T: SpecificRecord>(
     val brokerName: String,
     val brokerType: Broker.BrokerType,
-    val brokerFormat: Broker.BrokerFormat,
+    val keyFormat: Broker.BrokerFormat?,
+    val payloadFormat: Broker.BrokerFormat,
     val topic: String,
-    val payloadSchema: String,
+    val keySchema: String?,
+    val payloadSchema: String?,
     val payload: T
 ){
     companion object Factory{
@@ -19,9 +21,11 @@ data class DispatchEvent <T: SpecificRecord>(
             return DispatchEvent<ChangeEventData>(
                 brokerName = value.brokerName,
                 brokerType = Broker.fromAvro(value.brokerType),
-                brokerFormat = Broker.fromAvro(value.brokerFormat),
+                keyFormat = Broker.fromAvro(value.keyFormat),
+                keySchema = value.topicKeySchema,
+                payloadFormat = Broker.fromAvro(value.valueFormat),
+                payloadSchema = value.topicValueSchema,
                 topic = value.topic,
-                payloadSchema = value.topicSchema,
                 payload = value.payload
             )
         }

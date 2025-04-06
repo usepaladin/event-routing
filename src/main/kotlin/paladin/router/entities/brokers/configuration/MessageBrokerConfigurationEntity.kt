@@ -55,9 +55,13 @@ data class MessageBrokerConfigurationEntity(
     @Enumerated(EnumType.STRING)
     val brokerType: BrokerType,
 
-    @Column(name = "broker_format", nullable = false)
+    @Column(name = "broker_key_format", nullable = true)
     @Enumerated(EnumType.STRING)
-    val brokerFormat: BrokerFormat,
+    val keyFormat: BrokerFormat?,
+
+    @Column(name = "broker_value_format", nullable = false)
+    @Enumerated(EnumType.STRING)
+    val valueFormat: BrokerFormat,
 
     @JsonIgnore
     @Column(name = "enc_broker_config", nullable = false)
@@ -84,7 +88,8 @@ data class MessageBrokerConfigurationEntity(
                 id = messageBroker.id,
                 brokerName = messageBroker.brokerName,
                 brokerType = messageBroker.brokerType,
-                brokerFormat = messageBroker.brokerFormat,
+                keyFormat = messageBroker.keySerializationFormat,
+                valueFormat = messageBroker.valueSerializationFormat,
                 brokerConfigEncrypted = encryptedConfig,
                 brokerConfig = objectMapper.convertValue(brokerConfig),
                 defaultBroker = messageBroker.defaultBroker,

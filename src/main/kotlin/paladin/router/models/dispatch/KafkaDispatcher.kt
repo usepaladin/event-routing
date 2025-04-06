@@ -6,12 +6,14 @@ import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
 import java.util.Properties
+
 
 data class KafkaDispatcher <T, P>(
     override val broker: MessageBroker,
@@ -28,8 +30,8 @@ data class KafkaDispatcher <T, P>(
             return;
         }
 
-        ///sshhh
-        val record = ProducerRecord(topic, key as T, payload as P)
+        val (parsedKey: T, parsedPayload: P) = parseMessageValues(key, payload)
+        val record: ProducerRecord<T,P> = ProducerRecord(topic, parsedKey, parsedPayload)
         try {
             producer?.send(record)?.get()
             logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
@@ -48,8 +50,9 @@ data class KafkaDispatcher <T, P>(
         val properties = Properties()
         properties.apply {
             put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, authConfig.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.brokerFormat))
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.brokerFormat))
+            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.keySerializationFormat
+                ?: Broker.BrokerFormat.STRING))
+            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.valueSerializationFormat))
             put(ProducerConfig.ACKS_CONFIG, config.acks)
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
@@ -84,9 +87,23 @@ data class KafkaDispatcher <T, P>(
         }
     }
 
+    /**
+     * Converts the key and value to the appropriate type based on the broker configuration.
+     * Also utilises any provided schema to parse the message (When using Protobuf, Json or Avro)
+     *
+     * @param key The key of the message
+     * @param value The value of the message
+     *
+     * @return A pair of the parsed key and value
+     */
+    private fun <K, V> parseMessageValues(key: K, value: V): Pair<T,P> {
+        TODO()
+    }
+
     private fun getSerializerClass(brokerFormat: Broker.BrokerFormat): String{
         return when(brokerFormat){
-            Broker.BrokerFormat.JSON -> "org.apache.kafka.common.serialization.StringSerializer"
+            Broker.BrokerFormat.STRING -> "org.apache.kafka.common.serialization.StringSerializer"
+            Broker.BrokerFormat.JSON -> "org.springframework.kafka.support.serializer.JsonSerializer"
             Broker.BrokerFormat.AVRO -> "io.confluent.kafka.serializers.KafkaAvroSerializer"
             Broker.BrokerFormat.PROTOBUF -> "com.google.protobuf.util.JsonFormat"
         }

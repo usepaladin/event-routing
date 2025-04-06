@@ -25,8 +25,8 @@ abstract class MessageDispatcher{
     /**
      * Uses the provided broker to dispatch a message to the appropriate destination within the brokers reach.
      */
-    abstract fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String? = null)
-    abstract fun <V> dispatch(topic: String, payload: V, schema: String? = null)
+    abstract fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String? = null, payloadSchema: String? = null)
+    abstract fun <V> dispatch(topic: String, payload: V, payloadSchema: String? = null)
 
     /**
      * Builds the dispatcher of the message broker from the configuration properties

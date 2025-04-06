@@ -26,15 +26,13 @@ class DispatchService(private val logger: KLogger) {
                 throw IOException("Broker type mismatch: ${event.brokerType} != ${dispatcher.broker.brokerType}")
             }
 
-            if(event.brokerFormat != dispatcher.broker.brokerFormat){
-                throw IOException("Broker format mismatch: ${event.brokerFormat} != ${dispatcher.broker.brokerFormat}")
+            // Ensure Formats are of expected type to avoid serialization issues
+            if(event.keyFormat != dispatcher.broker.keySerializationFormat){
+                throw IOException("Broker format mismatch: ${event.keyFormat} != ${dispatcher.broker.keySerializationFormat}")
             }
 
-            val (_,_,_, topic: String, payloadSchema: String, payload: T) = event
-            // Wait for Dispatch to be in a connected state before sending messages
-            if(dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected){
-                dispatcher.dispatch(topic, payload, payloadSchema)
-                return;
+            if(event.payloadFormat != dispatcher.broker.valueSerializationFormat){
+                throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
             }
 
             // If the dispatcher is not connected, we will retry the dispatch for a short period of time
@@ -43,7 +41,12 @@ class DispatchService(private val logger: KLogger) {
                 try {
                     Thread.sleep(MIN_RETRY_BACKOFF * (2F).pow(retryAttempt).toLong())
                     if(dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected){
-                        dispatcher.dispatch(topic, payload, payloadSchema)
+
+                        if(dispatcher.broker.keySerializationFormat == null){
+                            dispatcher.dispatch(event.topic, event.payload, event.payloadSchema)
+                        } else {
+                            dispatcher.dispatch(event.topic, event.payload, event.keySchema, event.payloadSchema)
+                        }
                         return
                     }
                 } catch (e: InterruptedException) {
