@@ -19,7 +19,7 @@ data class RabbitDispatcher(
     override val logger: KLogger
         get() = KotlinLogging.logger {  }
 
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String?) {
+    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
         TODO("Not yet implemented")
     }
 
@@ -27,7 +27,7 @@ data class RabbitDispatcher(
         TODO("Not yet implemented")
     }
 
-    override fun <V> dispatch(topic: String, payload: V, schema: String?) {
+    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
         TODO("Not yet implemented")
     }
 

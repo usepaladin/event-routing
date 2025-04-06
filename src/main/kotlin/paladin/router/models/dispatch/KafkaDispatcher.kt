@@ -24,7 +24,7 @@ data class KafkaDispatcher <T, P>(
     override val logger: KLogger
         get() = KotlinLogging.logger {  }
 
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String?) {
+    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
         if(producer == null){
             logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
             return;
@@ -96,7 +96,7 @@ data class KafkaDispatcher <T, P>(
      *
      * @return A pair of the parsed key and value
      */
-    private fun <K, V> parseMessageValues(key: K, value: V): Pair<T,P> {
+    private fun <K, V> parseMessageValues(key: K, value: V, keySchema: String? = null, payloadSchema: String? = null): Pair<T,P> {
         TODO()
     }
 
