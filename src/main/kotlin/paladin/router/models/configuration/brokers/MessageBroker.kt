@@ -3,6 +3,7 @@ package paladin.router.models.configuration.brokers
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 
 import paladin.router.enums.configuration.Broker
+import paladin.router.util.factory.Configurable
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -11,10 +12,18 @@ data class MessageBroker(
     val brokerName: String,
     val brokerType: Broker.BrokerType,
     val brokerFormat: Broker.BrokerFormat,
-    val defaultBroker: Boolean,
+    var defaultBroker: Boolean,
     val createdAt: ZonedDateTime,
-    val updatedAt: ZonedDateTime
-) {
+    var updatedAt: ZonedDateTime
+): Configurable {
+    override fun updateConfiguration(config: Configurable): Configurable {
+        if (config is MessageBroker) {
+            this.defaultBroker = config.defaultBroker
+            this.updatedAt = ZonedDateTime.now()
+        }
+        return this
+    }
+
     companion object Factory {
         fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageBroker {
             return MessageBroker(

@@ -154,11 +154,12 @@ class BrokerService(
             ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedDispatcher.broker.brokerName}")
 
         dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Disconnected)
-        dispatcher.apply {
-            config = updatedDispatcher.config
-            authConfig = updatedDispatcher.authConfig
-            broker = updatedDispatcher.broker
-        }
+
+        // Update Broker and associated configuration properties
+        // Dispatch properties must be static to adhere to inheritance, meaning internal properties need to be individually updated
+        dispatcher.broker.updateConfiguration(updatedDispatcher.broker)
+        dispatcher.config.updateConfiguration(updatedDispatcher.config)
+        dispatcher.authConfig.updateConfiguration(updatedDispatcher.authConfig)
 
         // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
         dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connecting)

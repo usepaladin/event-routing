@@ -14,7 +14,11 @@ data class MQTTDispatcher(
     //todo => Research and create MQTT Producer
     private var producer: Any? = null
 
-    override fun <K, V> dispatch(key: K, payload: V) {
+    override fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun <V> dispatch(topic: String, payload: V, schema: String?) {
         TODO("Not yet implemented")
     }
 

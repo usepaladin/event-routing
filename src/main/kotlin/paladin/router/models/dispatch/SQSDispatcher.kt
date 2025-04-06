@@ -7,14 +7,18 @@ import paladin.router.pojo.configuration.brokers.core.SQSBrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
 
 data class SQSDispatcher(
-    override val broker: MessageBroker,
-    override val config: SQSBrokerConfig,
-    override val authConfig: SQSEncryptedConfig,
+    override var broker: MessageBroker,
+    override var config: SQSBrokerConfig,
+    override var authConfig: SQSEncryptedConfig,
 ):MessageDispatcher() {
 
     private var producer: QueueMessagingTemplate? = null
 
-    override fun <K, V> dispatch(key: K, payload: V) {
+    override fun <V> dispatch(topic: String, payload: V, schema: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String?) {
         TODO("Not yet implemented")
     }
 

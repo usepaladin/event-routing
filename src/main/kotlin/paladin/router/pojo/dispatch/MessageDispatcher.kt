@@ -7,9 +7,9 @@ import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 
 abstract class MessageDispatcher{
-    abstract var broker: MessageBroker
-    abstract var config: BrokerConfig
-    abstract var authConfig: EncryptedBrokerConfig
+    abstract val broker: MessageBroker
+    abstract val config: BrokerConfig
+    abstract val authConfig: EncryptedBrokerConfig
 
     private val _connectionState = MutableStateFlow<MessageDispatcherState>(MessageDispatcherState.Disconnected)
     val connectionState: StateFlow<MessageDispatcherState> = _connectionState
@@ -23,7 +23,7 @@ abstract class MessageDispatcher{
      */
     abstract fun <K, V> dispatch(topic: String, key: K, payload: V, schema: String? = null)
     abstract fun <V> dispatch(topic: String, payload: V, schema: String? = null)
-
+    
     /**
      * Builds the dispatcher of the message broker from the configuration properties
      * provided by the user
