@@ -7,6 +7,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.stereotype.Service
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
+import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
@@ -102,9 +103,10 @@ class BrokerService(
                 config = brokerConfig,
                 authConfig = encryptedConfig
             )
-
+            dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connecting)
             // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
             dispatcher.validate()
+            dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connected)
 
             // Encrypt relevant broker configuration properties, and format broker object for database storage
             val encryptedBrokerConfig:String = if(serviceEncryptionConfig.requireDataEncryption){
@@ -146,8 +148,49 @@ class BrokerService(
      * in the database
 
      */
-    fun updateBroker(dispatcher: MessageDispatcher): MessageDispatcher{
-        TODO()
+    fun updateBroker(updatedDispatcher: MessageDispatcher): MessageDispatcher{
+        // Disconnect existing dispatcher to avoid sending messages with incorrect message configuration
+        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(updatedDispatcher.broker.brokerName)
+            ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedDispatcher.broker.brokerName}")
+
+        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Disconnected)
+        dispatcher.apply {
+            config = updatedDispatcher.config
+            authConfig = updatedDispatcher.authConfig
+            broker = updatedDispatcher.broker
+        }
+
+        // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
+        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connecting)
+        dispatcher.validate()
+        // Rebuild Producer with updated Properties
+        dispatcher.build()
+        dispatcher.updateConnectionSTate(MessageDispatcher.MessageDispatcherState.Connected)
+
+        // Save updated configuration properties to database
+        val encryptedBrokerConfig: String = if(serviceEncryptionConfig.requireDataEncryption){
+            encryptionService.encryptObject(updatedDispatcher.authConfig)?: throw IOException("Failed to encrypt broker configuration")
+        } else {
+            updatedDispatcher.config.toString()
+        }
+
+        val brokerEntity = MessageBrokerConfigurationEntity.fromConfiguration(
+            messageBroker = updatedDispatcher.broker,
+            encryptedConfig = encryptedBrokerConfig,
+            brokerConfig = updatedDispatcher.config
+        )
+
+        // Store the broker configuration in the database
+        messageBrokerRepository.save(brokerEntity)
+        logger.info { "Broker Service => Broker ${updatedDispatcher.broker.brokerName} updated successfully" }
+
+        // Store the dispatcher in the dispatch service to route messages generated from other services
+        dispatchService.setDispatcher(
+            updatedDispatcher.broker.brokerName,
+            dispatcher
+        )
+
+        return dispatcher
     }
 
     /**
@@ -161,7 +204,20 @@ class BrokerService(
      *
      */
     fun deleteBroker(brokerName: String): Boolean{
-        TODO()
+        try{
 
+        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(brokerName)
+            ?: throw BrokerNotFoundException("Dispatcher not found for broker: $brokerName")
+
+        // Remove the broker from the database
+        messageBrokerRepository.deleteById(dispatcher.broker.id)
+        logger.info { "Broker Service => Broker $brokerName deleted successfully" }
+
+        // Remove the dispatcher from the dispatch service to stop routing messages generated from other services
+        dispatchService.removeDispatcher(brokerName)
+        return true
+        } catch (ex: Exception){
+            return false
+        }
     }
 }

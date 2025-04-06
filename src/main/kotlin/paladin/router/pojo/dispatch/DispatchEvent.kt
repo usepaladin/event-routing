@@ -9,7 +9,8 @@ data class DispatchEvent <T: SpecificRecord>(
     val brokerName: String,
     val brokerType: Broker.BrokerType,
     val brokerFormat: Broker.BrokerFormat,
-    val topicSchema: String,
+    val topic: String,
+    val payloadSchema: String,
     val payload: T
 ){
     companion object Factory{
@@ -19,7 +20,8 @@ data class DispatchEvent <T: SpecificRecord>(
                 brokerName = value.brokerName,
                 brokerType = Broker.fromAvro(value.brokerType),
                 brokerFormat = Broker.fromAvro(value.brokerFormat),
-                topicSchema = """""",
+                topic = value.topic,
+                payloadSchema = value.topicSchema,
                 payload = value.payload
             )
         }
