@@ -35,6 +35,8 @@ class DispatchService(private val logger: KLogger) {
                 throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
             }
 
+            //Todo - Switch to Retry Template
+
             // If the dispatcher is not connected, we will retry the dispatch for a short period of time
             var retryAttempt = 0
             while (retryAttempt < MAX_RETRY_ATTEMPTS) {

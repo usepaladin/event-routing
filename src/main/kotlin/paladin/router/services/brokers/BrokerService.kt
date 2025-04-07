@@ -214,11 +214,11 @@ class BrokerService(
         // Remove the broker from the database
         messageBrokerRepository.deleteById(dispatcher.broker.id)
         logger.info { "Broker Service => Broker $brokerName deleted successfully" }
-
         // Remove the dispatcher from the dispatch service to stop routing messages generated from other services
         dispatchService.removeDispatcher(brokerName)
         return true
         } catch (ex: Exception){
+            logger.error { "Broker Service => An error occurred when deleting broker $brokerName => Message: ${ex.message}" }
             return false
         }
     }
