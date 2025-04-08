@@ -1,0 +1,25 @@
+router:
+  server-instance-id: ${SERVER_INSTANCE_ID:}
+  tenant-id: ${TENANT_ID:}
+spring:
+  application:
+    name: event-router${TENANT_ID:}
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    listener:
+      type: single
+      concurrency: 3
+      auto-startup: false
+    consumer:
+      group-id: event-router-tenant-${TENANT_ID:}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+        specific.avro.reader: true
+encryption:
+  require-data-encryption: true
+  key: ${ENCRYPTION_KEY:}
+
+
