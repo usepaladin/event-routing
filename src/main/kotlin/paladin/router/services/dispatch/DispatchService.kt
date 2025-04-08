@@ -10,12 +10,13 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.pow
 
+private const val MAX_RETRY_ATTEMPTS: Int = 3
+private const val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
+
 @Service
 class DispatchService(private val logger: KLogger) {
     private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
-    private final val MAX_RETRY_ATTEMPTS: Int = 3
-    private final val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
-
+    
     fun <T: SpecificRecord> dispatchEvent(event: DispatchEvent<T>){
         try{
             val dispatcher: MessageDispatcher = clientBrokers[event.brokerName]
