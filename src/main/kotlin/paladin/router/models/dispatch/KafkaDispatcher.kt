@@ -12,6 +12,7 @@ import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.services.schema.SchemaService
 import java.util.Properties
 
 
@@ -19,7 +20,14 @@ data class KafkaDispatcher <T, P>(
     override val broker: MessageBroker,
     override val config: KafkaBrokerConfig,
     override val authConfig: KafkaEncryptedConfig,
+    override val schemaService: SchemaService
 ): MessageDispatcher()  {
+    constructor(dispatcher: KafkaDispatcher<*,*>) : this(
+        broker = dispatcher.broker,
+        config = dispatcher.config,
+        authConfig = dispatcher.authConfig,
+        schemaService = dispatcher.schemaService
+    )
     private var producer: KafkaProducer<T,P>? = null
     override val logger: KLogger
         get() = KotlinLogging.logger {  }

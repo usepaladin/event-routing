@@ -6,9 +6,10 @@ import kotlinx.coroutines.flow.StateFlow
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
-import kotlin.jvm.Throws
+import paladin.router.services.schema.SchemaService
 
 abstract class MessageDispatcher{
+    abstract val schemaService: SchemaService
     abstract val broker: MessageBroker
     abstract val config: BrokerConfig
     abstract val authConfig: EncryptedBrokerConfig

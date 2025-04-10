@@ -1,6 +1,7 @@
 package paladin.router.util.factory
 
 import paladin.router.enums.configuration.Broker
+import paladin.router.enums.configuration.SQS.Region
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.pojo.configuration.brokers.auth.RabbitEncryptedConfig
@@ -60,7 +61,6 @@ object BrokerConfigFactory {
 
     private fun parseSQSConfiguration(properties: Map<String, Any>): Pair<SQSBrokerConfig, SQSEncryptedConfig> {
         val brokerConfig = SQSBrokerConfig(
-            region = properties["region"] as String,
             queueUrl = properties["queueUrl"] as String,
             messageRetentionPeriod = properties["messageRetentionPeriod"] as Int,
             visibilityTimeout = properties["visibilityTimeout"] as Int,
@@ -69,7 +69,9 @@ object BrokerConfigFactory {
 
         val encryptedConfig = SQSEncryptedConfig(
             accessKey = properties["accessKeyId"] as String,
-            secretKey = properties["secretAccessKey"] as String
+            secretKey = properties["secretAccessKey"] as String,
+            region = Region.fromRegion(properties["region"] as String) ?: throw IllegalArgumentException("Invalid region")
+
         )
 
         return Pair(brokerConfig, encryptedConfig)

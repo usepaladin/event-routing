@@ -3,9 +3,7 @@ package paladin.router.services.schema
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KLogger
 import org.apache.avro.Schema
-import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericDatumReader
-import org.apache.avro.generic.GenericDatumWriter
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io.Decoder
 import org.apache.avro.io.DecoderFactory

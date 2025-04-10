@@ -28,7 +28,8 @@ class BrokerService(
     private val encryptionService: EncryptionService,
     private val logger: KLogger,
     private val serviceEncryptionConfig: EncryptionConfigurationProperties,
-    private val kafkaListenerEndpointRegistry: KafkaListenerEndpointRegistry
+    private val kafkaListenerEndpointRegistry: KafkaListenerEndpointRegistry,
+    private val messageDispatcherFactory: MessageDispatcherFactory
     ): ApplicationRunner {
 
     /**
@@ -54,7 +55,7 @@ class BrokerService(
             // Conjoin properties and pass through Broker config factory
             val properties: Map<String, Any> = entity.brokerConfig + encryptedConfig
             val (config: BrokerConfig, authConfig: EncryptedBrokerConfig)  = BrokerConfigFactory.fromConfigurationProperties(entity.brokerType, properties)
-            val messageDispatcher: MessageDispatcher = MessageDispatcherFactory.fromBrokerConfig(broker, config, authConfig)
+            val messageDispatcher: MessageDispatcher = messageDispatcherFactory.fromBrokerConfig(broker, config, authConfig)
             // Store the dispatcher in the dispatch service to route messages generated from other services
             dispatchService.setDispatcher(
                 broker.brokerName,
@@ -98,7 +99,7 @@ class BrokerService(
             properties = configuration)
 
             // Generate Message Dispatcher based on broker configuration
-            val dispatcher: MessageDispatcher = MessageDispatcherFactory.fromBrokerConfig(
+            val dispatcher: MessageDispatcher = messageDispatcherFactory.fromBrokerConfig(
                 broker = broker,
                 config = brokerConfig,
                 authConfig = encryptedConfig
