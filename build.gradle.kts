@@ -36,7 +36,6 @@ repositories {
 }
 
 extra["springCloudVersion"] = "2024.0.1"
-val solaceSpringCloudVersion by extra("4.7.0")
 
 dependencies {
     // Spring boot + Core
@@ -54,7 +53,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.16")
 
     // Service Avro Models
-    implementation("paladin.avro:avro-models:0.0.4-SNAPSHOT")
+    implementation("paladin.avro:avro-models:0.0.5-SNAPSHOT")
 
     // Spring cloud stream
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
@@ -64,20 +63,12 @@ dependencies {
     implementation("org.apache.avro:avro:1.12.0")
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
 
-    // Protobuf Parsing
-    implementation("com.google.protobuf:protobuf-java:4.30.2")
-    implementation("com.google.protobuf:protobuf-java-util:4.30.2")
-
     // Message Broker Implementations
     implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
-    implementation("org.springframework.boot:spring-boot-starter-artemis")
-    implementation("org.springframework.boot:spring-boot-starter-pulsar")
-    implementation("org.springframework.boot:spring-boot-starter-activemq")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
-    implementation("com.solace.spring.cloud:spring-cloud-starter-stream-solace")
 
     // JPA
     runtimeOnly("org.postgresql:postgresql")
@@ -97,7 +88,6 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
-        mavenBom("com.solace.spring.cloud:solace-spring-cloud-bom:$solaceSpringCloudVersion")
     }
 }
 

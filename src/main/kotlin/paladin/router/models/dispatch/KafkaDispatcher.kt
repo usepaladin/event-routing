@@ -97,7 +97,7 @@ data class KafkaDispatcher <T, P>(
 
     /**
      * Converts the key and value to the appropriate type based on the broker configuration.
-     * Also utilises any provided schema to parse the message (When using Protobuf, Json or Avro)
+     * Also utilises any provided schema to parse the message (When using Json or Avro)
      *
      * @param key The key of the message
      * @param value The value of the message
@@ -113,7 +113,6 @@ data class KafkaDispatcher <T, P>(
             Broker.BrokerFormat.STRING -> "org.apache.kafka.common.serialization.StringSerializer"
             Broker.BrokerFormat.JSON -> "org.springframework.kafka.support.serializer.JsonSerializer"
             Broker.BrokerFormat.AVRO -> "io.confluent.kafka.serializers.KafkaAvroSerializer"
-            Broker.BrokerFormat.PROTOBUF -> "com.google.protobuf.util.JsonFormat"
         }
     }
 

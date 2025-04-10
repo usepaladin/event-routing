@@ -5,15 +5,12 @@ class Broker{
         KAFKA,
         RABBIT,
         SQS,
-        PULSAR,
-        MQTT
     }
 
     enum class BrokerFormat {
         STRING,
         JSON,
         AVRO,
-        PROTOBUF
     }
 
     companion object Factory{
@@ -22,7 +19,6 @@ class Broker{
                 paladin.avro.database.BrokerFormat.STRING -> BrokerFormat.STRING
                 paladin.avro.database.BrokerFormat.JSON -> BrokerFormat.JSON
                 paladin.avro.database.BrokerFormat.AVRO -> BrokerFormat.AVRO
-                paladin.avro.database.BrokerFormat.PROTOBUF -> BrokerFormat.PROTOBUF
             }
         }
 
@@ -31,8 +27,6 @@ class Broker{
                 paladin.avro.database.BrokerType.KAFKA -> BrokerType.KAFKA
                 paladin.avro.database.BrokerType.RABBITMQ -> BrokerType.RABBIT
                 paladin.avro.database.BrokerType.SQS -> BrokerType.SQS
-                paladin.avro.database.BrokerType.PULSAR -> BrokerType.PULSAR
-                paladin.avro.database.BrokerType.MQTT -> BrokerType.MQTT
             }
         }
     }
