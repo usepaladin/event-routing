@@ -2,6 +2,18 @@ router:
   server-instance-id: ${SERVER_INSTANCE_ID:}
   tenant-id: ${TENANT_ID:}
 spring:
+  datasource:
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+    url: ${POSTGRES_JDBC}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    properties:
+      hibernate:
+        c3p0:
+          timeout: 30000
   application:
     name: event-router${TENANT_ID:}
   kafka:

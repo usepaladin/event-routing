@@ -53,7 +53,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.16")
 
     // Service Avro Models
-    implementation("paladin.avro:avro-models:0.0.5-SNAPSHOT")
+    implementation("paladin.avro:avro-models:0.0.8-SNAPSHOT")
 
     // Spring cloud stream
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")

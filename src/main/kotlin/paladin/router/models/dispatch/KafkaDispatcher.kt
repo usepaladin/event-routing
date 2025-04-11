@@ -49,7 +49,7 @@ data class KafkaDispatcher <T, P>(
 
     }
 
-    override fun <V> dispatch(topic: String, payload: V, schema: String?) {
+    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
         throw UnsupportedOperationException("Kafka does not support dispatching without a key")
     }
 
@@ -105,7 +105,30 @@ data class KafkaDispatcher <T, P>(
      * @return A pair of the parsed key and value
      */
     private fun <K, V> parseMessageValues(key: K, value: V, keySchema: String? = null, payloadSchema: String? = null): Pair<T,P> {
-        TODO()
+        val parsedKey = convertToFormat(key, broker.keySerializationFormat ?: Broker.BrokerFormat.STRING, keySchema)
+        val parsedValue = convertToFormat(value, broker.valueSerializationFormat, payloadSchema)
+
+        // dont care didnt ask for a warning cry about it
+        return Pair(parsedKey as T, parsedValue as P)
+    }
+
+    private fun <T> convertToFormat(value: T, format: Broker.BrokerFormat, schema: String?): Any {
+        return when(format){
+            Broker.BrokerFormat.STRING -> schemaService.parseToString(value)
+            Broker.BrokerFormat.JSON -> {
+                if(schema == null) {
+                    return schemaService.parseToJson(value)
+
+                }
+                return schemaService.parseToJson(schema, value)
+            }
+            Broker.BrokerFormat.AVRO -> {
+                if(schema == null) {
+                    throw IllegalArgumentException("Schema cannot be null for Avro format")
+                }
+                return schemaService.parseToAvro(schema, value)
+            }
+        }
     }
 
     private fun getSerializerClass(brokerFormat: Broker.BrokerFormat): String{

@@ -35,9 +35,9 @@ class DatabaseEventConsumer(
             return
         }
 
-        // Dispatch event to the appropriate message broker
-        val dispatchEvent: DispatchEvent<ChangeEventData> = DispatchEvent.fromEvent(event)
-        dispatchService.dispatchEvent(dispatchEvent)
+        // Dispatch event to all recipient brokers
+        val dispatchEvent: List<DispatchEvent<ChangeEventData>> = DispatchEvent.fromEvent(event)
+        dispatchService.dispatchEvents(dispatchEvent)
     }
 
 

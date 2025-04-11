@@ -1,7 +1,10 @@
 package paladin.router.services.schema
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
+import io.mockk.junit5.MockKExtension
 import org.springframework.boot.test.context.SpringBootTest
 
 import io.mockk.verify
@@ -10,9 +13,10 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
 
 
-@SpringBootTest
+@ExtendWith(MockKExtension::class)
 class SchemaServiceTest {
 
         @MockK
@@ -20,7 +24,8 @@ class SchemaServiceTest {
 
         private lateinit var schemaService: SchemaService
 
-        private data class User(val name: String, val age: Int)
+        private data class User(val name: String, val age: Int, val email: String? = null)
+        private val objectMapper = ObjectMapper()
 
         @BeforeEach
         fun setUp() {
@@ -40,12 +45,22 @@ class SchemaServiceTest {
         }
             """.trimIndent()
 
+    private val jsonSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "age": { "type": "number" }
+          },
+          "required": ["name", "age"]
+        }
+    """.trimIndent()
+
         @Test
         fun `encodeToAvro should convert Kotlin object to GenericRecord`() {
             val user = User(name = "Alice", age = 30)
 
-            val record: GenericRecord = schemaService.encodeToAvro(avroSchemaString, user)
-
+            val record: GenericRecord = schemaService.parseToAvro(avroSchemaString, user)
             assertEquals("Alice", record["name"].toString())
             assertEquals(30, record["age"])
         }
@@ -57,9 +72,43 @@ class SchemaServiceTest {
             val user = User("Bob", 25)
 
             assertThrows<Exception> {
-                schemaService.encodeToAvro(invalidSchema, user)
+                schemaService.parseToAvro(invalidSchema, user)
             }
         }
+
+    @Test
+    fun `parseToJson should filter only fields present in the schema`() {
+        val user = User("Bob", 42, "bob@example.com")
+
+        val result: JsonNode = schemaService.parseToJson(jsonSchema, user)
+
+        assertTrue(result.has("name"))
+        assertTrue(result.has("age"))
+        assertFalse(result.has("email"))
+
+        assertEquals("Bob", result["name"].asText())
+        assertEquals(42, result["age"].asInt())
+    }
+
+    @Test
+    fun `parseToJson should return empty object for unmatched fields`() {
+        val jsonSchema = """{"type":"object","properties":{"foo":{"type":"string"}}}"""
+        val user = User("Zoe", 25, "zoe@example.com")
+
+        val result = schemaService.parseToJson(jsonSchema, user)
+        assertEquals(0, result.size())
+    }
+
+    @Test
+    fun `parseToString should serialize object to JSON string`() {
+        val user = User("Charlie", 50, "charlie@example.com")
+        val json = schemaService.parseToString(user)
+
+        val parsed = objectMapper.readTree(json)
+        assertEquals("Charlie", parsed["name"].asText())
+        assertEquals(50, parsed["age"].asInt())
+        assertEquals("charlie@example.com", parsed["email"].asText())
+    }
     }
 
 

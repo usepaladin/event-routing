@@ -17,17 +17,19 @@ data class DispatchEvent <T: SpecificRecord>(
 ){
     companion object Factory{
 
-        fun fromEvent(value: DatabaseEventRouterValueAv): DispatchEvent<ChangeEventData> {
-            return DispatchEvent<ChangeEventData>(
-                brokerName = value.brokerName,
-                brokerType = Broker.fromAvro(value.brokerType),
-                keyFormat = Broker.fromAvro(value.keyFormat),
-                keySchema = value.topicKeySchema,
-                payloadFormat = Broker.fromAvro(value.valueFormat),
-                payloadSchema = value.topicValueSchema,
-                topic = value.topic,
-                payload = value.payload
-            )
+        fun fromEvent(value: DatabaseEventRouterValueAv): List<DispatchEvent<ChangeEventData>> {
+            return value.brokers.map{broker ->
+                DispatchEvent<ChangeEventData>(
+                    brokerName = broker.brokerName,
+                    brokerType = Broker.fromAvro(broker.brokerType),
+                    keyFormat = Broker.fromAvro(broker.keyFormat),
+                    keySchema = broker.topicKeySchema,
+                    payloadFormat = Broker.fromAvro(broker.valueFormat),
+                    payloadSchema = broker.topicValueSchema,
+                    topic = broker.topic,
+                    payload = value.payload
+                )
+            }
         }
 
     }

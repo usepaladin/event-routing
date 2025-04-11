@@ -1,6 +1,7 @@
 package paladin.router.services.dispatch
 
 import io.github.oshai.kotlinlogging.KLogger
+import kotlinx.coroutines.*
 import org.apache.avro.specific.SpecificRecord
 import org.springframework.stereotype.Service
 import paladin.router.enums.configuration.Broker
@@ -8,17 +9,33 @@ import paladin.router.pojo.dispatch.DispatchEvent
 import paladin.router.pojo.dispatch.MessageDispatcher
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.pow
 
 private const val MAX_RETRY_ATTEMPTS: Int = 3
 private const val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
 
 @Service
-class DispatchService(private val logger: KLogger) {
+class DispatchService(private val logger: KLogger): CoroutineScope {
     private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.IO + SupervisorJob()
     
-    fun <T: SpecificRecord> dispatchEvent(event: DispatchEvent<T>){
-        try{
+    fun <T: SpecificRecord> dispatchEvents(events: List<DispatchEvent<T>>) = launch {
+        events.map { event ->
+            async {
+                try{
+                    dispatchToBroker(event)
+                } catch (e: Exception){
+                    logger.error(e) { "Dispatch Service => Error dispatching event => => ${event.brokerType} => ${event.brokerName} => ${event.topic} => Message: ${e.message}" }
+                    // Send to DLQ For manual handling
+                }
+            }
+        }.awaitAll()
+    }
+
+    private suspend fun <T:SpecificRecord> dispatchToBroker(event: DispatchEvent<T>){
+
             val dispatcher: MessageDispatcher = clientBrokers[event.brokerName]
                 ?: throw IOException("No dispatcher found for broker: ${event.brokerName}")
 
@@ -39,35 +56,25 @@ class DispatchService(private val logger: KLogger) {
             //Todo - Switch to Retry Template
 
             // If the dispatcher is not connected, we will retry the dispatch for a short period of time
-            var retryAttempt = 0
-            while (retryAttempt < MAX_RETRY_ATTEMPTS) {
-                try {
-                    Thread.sleep(MIN_RETRY_BACKOFF * (2F).pow(retryAttempt).toLong())
-                    if(dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected){
-
-                        if(dispatcher.broker.keySerializationFormat == null){
-                            dispatcher.dispatch(event.topic, event.payload, event.payloadSchema)
-                        } else {
-                            dispatcher.dispatch(event.topic, event.payload, event.keySchema, event.payloadSchema)
-                        }
-                        return
+            repeat(
+                MAX_RETRY_ATTEMPTS
+            ) { retryAttempt ->
+                if (dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected) {
+                    if(dispatcher.broker.keySerializationFormat == null){
+                        dispatcher.dispatch(event.topic, event.payload, event.payloadSchema)
+                    } else {
+                        dispatcher.dispatch(event.topic, event.payload, event.keySchema, event.payloadSchema)
                     }
-                } catch (e: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw e
+                    return
                 }
-                retryAttempt++
+
+                logger.warn { "Dispatch Service => Retrying dispatch to ${event.brokerName} => Attempt: ${retryAttempt + 1}" }
+                delay(MIN_RETRY_BACKOFF * (2F).pow(retryAttempt).toLong())
             }
 
-            // Connection failed after retry attempts, send to DLQ
+            // Max retries exhausted, throw exception and send to DLQ for manual handling
             logger.error { "Dispatch Service => Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts" }
-            logger.info { "Dispatch Service => Sending event to DLQ" }
-            TODO()
-        }
-        catch (e: Exception){
-            logger.error(e) { "Dispatch Service => Error dispatching event => ${e.message}" }
-            throw e
-        }
+            throw IOException("Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts")
     }
 
     fun setDispatcher(brokerName: String, dispatcher: MessageDispatcher){
