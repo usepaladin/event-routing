@@ -53,9 +53,7 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
                 throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
             }
 
-            //Todo - Switch to Retry Template
-
-            // If the dispatcher is not connected, we will retry the dispatch for a short period of time
+            // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ
             repeat(
                 MAX_RETRY_ATTEMPTS
             ) { retryAttempt ->
