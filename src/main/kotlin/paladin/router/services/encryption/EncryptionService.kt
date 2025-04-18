@@ -19,6 +19,7 @@ import javax.crypto.spec.SecretKeySpec
 @Service
 class EncryptionService(
     private val encryptionConfigurationProperties: EncryptionConfigurationProperties,
+    private val objectMapper: ObjectMapper,
     private val logger: KLogger
 ) {
 
@@ -29,7 +30,6 @@ class EncryptionService(
     private val cipherTransformation = "AES/GCM/NoPadding" // AES in Galois/Counter Mode (GCM)
     private val gcmTagLength = 128 // GCM Tag Length in bits (128 bits is recommended)
     private val ivLengthBytes = 12 // Recommended IV length for GCM is 12 bytes (96 bits)
-    private val objectMapper = ObjectMapper()
 
     fun encryptObject(data: Any): String? {
         val dataString = objectMapper.writeValueAsString(data)

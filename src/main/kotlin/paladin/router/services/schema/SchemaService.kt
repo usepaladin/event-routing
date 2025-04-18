@@ -14,9 +14,11 @@ import java.io.IOException
 import kotlin.jvm.Throws
 
 @Service
-class SchemaService(private val logger: KLogger) {
+class SchemaService(
+    private val objectMapper: ObjectMapper,
+    private val logger: KLogger) {
 
-    private final val objectMapper = ObjectMapper()
+
 
     /**
      * Parses the Payload into an Avro GenericRecord using the provided Avro schema.

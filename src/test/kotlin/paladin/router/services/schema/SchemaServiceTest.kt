@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import paladin.router.util.User
 
 
 @ExtendWith(MockKExtension::class)
@@ -23,8 +24,6 @@ class SchemaServiceTest {
         private lateinit var logger: KLogger
 
         private lateinit var schemaService: SchemaService
-
-        private data class User(val name: String, val age: Int, val email: String? = null)
         private val objectMapper = ObjectMapper()
 
         @BeforeEach
