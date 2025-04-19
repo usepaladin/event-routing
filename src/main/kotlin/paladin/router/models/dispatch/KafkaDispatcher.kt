@@ -59,6 +59,16 @@ data class KafkaDispatcher <T, P>(
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
         }
+
+        if(this.requiresSchemaRegistry()){
+            properties.apply {
+                put("schema.registry.url", authConfig.schemaRegistryUrl)
+                put("specific.avro.reader", true)
+//                put("basic.auth.credentials.source", "USER_INFO")
+//                put("basic.auth.user.info", "${authConfig.schemaRegistryUser}:${authConfig.schemaRegistryPassword}")
+            }
+        }
+
         producer = KafkaProducer(properties)
         testConnection()
     }
@@ -87,6 +97,14 @@ data class KafkaDispatcher <T, P>(
         if (config.requestTimeoutMs <= 0) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Request timeout must be greater than 0")
         }
+
+        if( this.requiresSchemaRegistry() && authConfig.schemaRegistryUrl.isNullOrEmpty()){
+            throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Schema registry URL cannot be null or empty for Avro format")
+        }
+    }
+
+    private fun requiresSchemaRegistry(): Boolean{
+        return broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
     }
 
     /**
@@ -102,7 +120,15 @@ data class KafkaDispatcher <T, P>(
         val parsedKey = convertToFormat(key, broker.keySerializationFormat ?: Broker.BrokerFormat.STRING, keySchema)
         val parsedValue = convertToFormat(value, broker.valueSerializationFormat, payloadSchema)
 
-        // dont care didnt ask for a warning cry about it
+        if (parsedKey !is String && parsedKey !is ByteArray) {
+            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Key is not of type String or ByteArray" }
+        }
+
+        if (parsedValue !is String && parsedValue !is ByteArray) {
+            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Value is not of type String or ByteArray" }
+        }
+
+        @Suppress("UNCHECKED_CAST")
         return Pair(parsedKey as T, parsedValue as P)
     }
 

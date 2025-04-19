@@ -90,8 +90,7 @@ class BrokerService(
      * Before creation, the broker configuration is validated to ensure that the broker is fully functional with the
      * correct attached configuration and connection details and ready for use.
      *
-     * @param configuration Map<String, Any> - The configuration of the broker to be created
-     * @param broker MessageBroker - The core details of the message broker being created
+     * @param newBroker BrokerCreationRequest - The configuration details of the broker being added
      */
     @Throws(IllegalArgumentException::class, IOException::class)
     fun createBroker(newBroker: BrokerCreationRequest): MessageDispatcher{

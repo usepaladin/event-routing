@@ -11,6 +11,7 @@ import paladin.router.repository.MessageBrokerRepository
 import paladin.router.services.dispatch.DispatchService
 import paladin.router.services.dispatch.DispatchServiceTest
 import paladin.router.services.encryption.EncryptionService
+import paladin.router.util.TestUtilServices
 import paladin.router.util.factory.MessageDispatcherFactory
 
 @ExtendWith(MockKExtension::class)
@@ -42,6 +43,6 @@ class BrokersServiceTest {
     @BeforeEach
     fun setUp() {
         brokerService = BrokerService(repository, dispatchService, encryptionService, logger,
-            serviceEncryptionConfig, kafkaListenerEndpointRegistry, messageDispatchServiceTest)
+            serviceEncryptionConfig, kafkaListenerEndpointRegistry, messageDispatchServiceTest, TestUtilServices.objectMapper)
     }
 }

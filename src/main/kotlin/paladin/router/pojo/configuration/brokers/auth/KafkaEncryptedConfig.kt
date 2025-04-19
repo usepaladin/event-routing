@@ -4,6 +4,7 @@ import paladin.router.util.factory.Configurable
 
 data class KafkaEncryptedConfig(
     var bootstrapServers: String? = null,
+    var schemaRegistryUrl: String? = null,
     var securityProtocol: String? = null,
     var saslMechanism: String? = null,
     var saslJaasConfig: String? = null,
@@ -16,6 +17,7 @@ data class KafkaEncryptedConfig(
         if (config is KafkaEncryptedConfig) {
             this.bootstrapServers = config.bootstrapServers
             this.securityProtocol = config.securityProtocol
+            this.schemaRegistryUrl = config.schemaRegistryUrl
             this.saslMechanism = config.saslMechanism
             this.saslJaasConfig = config.saslJaasConfig
             this.sslTruststoreLocation = config.sslTruststoreLocation
