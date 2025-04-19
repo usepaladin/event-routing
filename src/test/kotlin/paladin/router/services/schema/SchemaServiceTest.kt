@@ -5,15 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.springframework.boot.test.context.SpringBootTest
 
-import io.mockk.verify
 import org.apache.avro.generic.GenericRecord
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import paladin.router.util.TestUtilServices
 import paladin.router.util.User
 
 
@@ -28,7 +27,7 @@ class SchemaServiceTest {
 
         @BeforeEach
         fun setUp() {
-            schemaService = SchemaService(logger)
+            schemaService = SchemaService(TestUtilServices.objectMapper, logger)
         }
 
         private val avroSchemaString =

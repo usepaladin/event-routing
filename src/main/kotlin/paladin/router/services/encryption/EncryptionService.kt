@@ -122,18 +122,23 @@ class EncryptionService(
             val decryptedBytes = cipher.doFinal(actualCiphertextBytes)
             String(decryptedBytes, StandardCharsets.UTF_8)
 
-        }.onFailure { e ->
-            logger.error { "${"Decryption failed: {}"} ${e.message}" }
-            when (e) {
-                is NoSuchAlgorithmException -> logger.error { "Decryption algorithm not found" }
-                is NoSuchPaddingException -> logger.error { "Padding exception during decryption" }
-                is IllegalBlockSizeException -> logger.error { "Illegal block size during decryption" }
-                is BadPaddingException -> logger.error { "Bad padding during decryption (possibly incorrect key or corrupted ciphertext)" }
-                is InvalidKeyException -> logger.error { "Invalid decryption key" }
-                is AEADBadTagException -> logger.error { "Authentication tag mismatch (ciphertext integrity compromised or incorrect key)" }
-                is InvalidAlgorithmParameterException -> logger.error { "Invalid algorithm parameters during decryption" }
-            }
+        }.onFailure { e: Throwable ->
+            logger.error { "Decryption failed =>  ${e.message} => ${getSpecificDecryptionError(e)}" }
         }.getOrNull()
+    }
+
+    private fun getSpecificDecryptionError(ex: Throwable): String{
+        return when (ex) {
+            is NoSuchAlgorithmException ->  "Decryption algorithm not found"
+            is AEADBadTagException ->  "Authentication tag mismatch (ciphertext integrity compromised or incorrect key)"
+            is NoSuchPaddingException -> "Padding exception during decryption"
+            is IllegalBlockSizeException ->  "Illegal block size during decryption"
+            is BadPaddingException ->  "Bad padding during decryption (possibly incorrect key or corrupted ciphertext)"
+            is InvalidKeyException ->  "Invalid decryption key"
+            is InvalidAlgorithmParameterException ->  "Invalid algorithm parameters during decryption"
+            is IllegalArgumentException ->  "Illegal argument provided during decryption"
+            else -> "Cause => Unknown"
+        }
     }
 
 

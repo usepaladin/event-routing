@@ -1,38 +1,48 @@
 package paladin.router.services.encryption
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.LoggerFactory
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
+import paladin.router.util.TestLogAppender
+import paladin.router.util.TestUtilServices
 import paladin.router.util.User
 import java.util.Base64
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class EncryptionServiceTest {
-
-    @MockK
-    private lateinit var logger: KLogger
 
     @MockK
     private lateinit var encryptionConfigurationProperties: EncryptionConfigurationProperties
 
     private lateinit var encryptionService: EncryptionService
 
+    private lateinit var testAppender: TestLogAppender
+    private var logger: KLogger = KotlinLogging.logger {}
+    private lateinit var logbackLogger: Logger
+
+
     @BeforeEach
     fun setUp(){
-        val objectMapper = ObjectMapper().registerKotlinModule()
+        logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
+        testAppender = TestLogAppender.factory(logbackLogger, Level.DEBUG)
         every { encryptionConfigurationProperties.key } returns Base64.getEncoder().encodeToString(ByteArray(16){1})
-        encryptionService = EncryptionService(encryptionConfigurationProperties, objectMapper, logger)
+        encryptionService = EncryptionService(encryptionConfigurationProperties, TestUtilServices.objectMapper, logger)
 
     }
 
@@ -83,6 +93,11 @@ class EncryptionServiceTest {
     fun `should return null on decryption failure with invalid Base64`() {
         val invalidBase64 = "!!not_base64!!"
         val result = encryptionService.decrypt(invalidBase64)
+        assertTrue {
+            testAppender.logs.any{
+                it.level == Level.ERROR
+            }
+        }
         assertNull(result)
     }
 
@@ -90,6 +105,11 @@ class EncryptionServiceTest {
     fun `should return null when ciphertext is too short`() {
         val shortCiphertext = Base64.getEncoder().encodeToString(ByteArray(5))
         val result = encryptionService.decrypt(shortCiphertext)
+        assertTrue {
+            testAppender.logs.any {
+                it.level == Level.ERROR && it.message.contains("Invalid ciphertext format")
+            }
+        }
         assertNull(result)
     }
 }
