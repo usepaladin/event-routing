@@ -7,8 +7,9 @@ import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.services.schema.SchemaService
+import java.io.Serializable
 
-abstract class MessageDispatcher{
+abstract class MessageDispatcher: Serializable{
     abstract val schemaService: SchemaService
     abstract val broker: MessageBroker
     abstract val config: BrokerConfig

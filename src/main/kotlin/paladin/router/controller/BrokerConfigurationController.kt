@@ -15,8 +15,7 @@ class BrokerConfigurationController(
 ) {
     @PostMapping("/")
     fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatcher>{
-        val (brokerDetails: MessageBroker, brokerConfig: Map<String, Any>) = broker;
-        val createdBroker: MessageDispatcher = brokerService.createBroker(brokerDetails, brokerConfig)
+        val createdBroker: MessageDispatcher = brokerService.createBroker(broker)
         return ResponseEntity.status(HttpStatus.CREATED).body(createdBroker)
     }
 

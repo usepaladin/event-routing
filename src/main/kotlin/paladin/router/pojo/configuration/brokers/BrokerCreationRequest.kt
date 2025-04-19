@@ -1,9 +1,14 @@
 package paladin.router.pojo.configuration.brokers
 
-import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.enums.configuration.Broker
+
 import java.io.Serializable
 
 data class BrokerCreationRequest(
-    val broker: MessageBroker,
+    val brokerName: String,
+    val brokerType: Broker.BrokerType,
+    val keySerializationFormat: Broker.BrokerFormat?,
+    val valueSerializationFormat: Broker.BrokerFormat,
+    val defaultBroker: Boolean,
     val configuration: Map<String, Any>
 ): Serializable

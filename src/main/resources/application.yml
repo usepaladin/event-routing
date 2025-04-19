@@ -1,7 +1,8 @@
 router:
-  server-instance-id: ${SERVER_INSTANCE_ID:}
   tenant-id: ${TENANT_ID:}
 spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
   datasource:
     hikari:
       connection-timeout: 30000
@@ -25,7 +26,7 @@ spring:
     consumer:
       group-id: event-router-tenant-${TENANT_ID:}
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
@@ -33,5 +34,7 @@ spring:
 encryption:
   require-data-encryption: true
   key: ${ENCRYPTION_KEY:}
-
+springdoc:
+  api-docs:
+    path: /api-docs
 

@@ -11,5 +11,6 @@ class ObjectMapperConfig {
     @Bean
     fun objectMapper(): ObjectMapper {
         return ObjectMapper().registerKotlinModule()
+
     }
 }

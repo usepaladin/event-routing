@@ -39,19 +39,8 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
             val dispatcher: MessageDispatcher = clientBrokers[event.brokerName]
                 ?: throw IOException("No dispatcher found for broker: ${event.brokerName}")
 
-            // Ensure Broker is of expected type
-            if(event.brokerType != dispatcher.broker.brokerType){
-                throw IOException("Broker type mismatch: ${event.brokerType} != ${dispatcher.broker.brokerType}")
-            }
-
-            // Ensure Formats are of expected type to avoid serialization issues
-            if(event.keyFormat != dispatcher.broker.keySerializationFormat){
-                throw IOException("Broker format mismatch: ${event.keyFormat} != ${dispatcher.broker.keySerializationFormat}")
-            }
-
-            if(event.payloadFormat != dispatcher.broker.valueSerializationFormat){
-                throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
-            }
+            // Validate the payload and dispatcher
+            validatePayload(event, dispatcher)
 
             // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ
             repeat(
@@ -74,6 +63,23 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
             logger.error { "Dispatch Service => Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts" }
             throw IOException("Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts")
     }
+
+    private fun <T: SpecificRecord> validatePayload(event: DispatchEvent<T>, dispatcher: MessageDispatcher){
+        // Ensure Broker is of expected type
+        if(event.brokerType != dispatcher.broker.brokerType){
+            throw IOException("Broker type mismatch: ${event.brokerType} != ${dispatcher.broker.brokerType}")
+        }
+
+        // Ensure Formats are of expected type to avoid serialization issues
+        if(event.keyFormat != dispatcher.broker.keySerializationFormat){
+            throw IOException("Broker format mismatch: ${event.keyFormat} != ${dispatcher.broker.keySerializationFormat}")
+        }
+
+        if(event.payloadFormat != dispatcher.broker.valueSerializationFormat){
+            throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
+        }
+    }
+
 
     fun setDispatcher(brokerName: String, dispatcher: MessageDispatcher){
         clientBrokers[brokerName] = dispatcher

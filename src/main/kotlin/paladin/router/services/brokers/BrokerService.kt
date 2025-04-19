@@ -1,5 +1,7 @@
 package paladin.router.services.brokers
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.convertValue
 import io.github.oshai.kotlinlogging.KLogger
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -9,6 +11,7 @@ import paladin.router.configuration.properties.EncryptionConfigurationProperties
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.pojo.configuration.brokers.BrokerCreationRequest
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
@@ -29,7 +32,8 @@ class BrokerService(
     private val logger: KLogger,
     private val serviceEncryptionConfig: EncryptionConfigurationProperties,
     private val kafkaListenerEndpointRegistry: KafkaListenerEndpointRegistry,
-    private val messageDispatcherFactory: MessageDispatcherFactory
+    private val messageDispatcherFactory: MessageDispatcherFactory,
+    private val objectMapper: ObjectMapper
     ): ApplicationRunner {
 
     /**
@@ -90,13 +94,37 @@ class BrokerService(
      * @param broker MessageBroker - The core details of the message broker being created
      */
     @Throws(IllegalArgumentException::class, IOException::class)
-    fun createBroker(broker: MessageBroker, configuration: Map<String, Any>): MessageDispatcher{
+    fun createBroker(newBroker: BrokerCreationRequest): MessageDispatcher{
         // Generate Configuration Classes based on specific broker type and configuration properties
         try{
             // Generate broker configuration properties
             val (brokerConfig: BrokerConfig, encryptedConfig: EncryptedBrokerConfig) = BrokerConfigFactory.fromConfigurationProperties(
-            brokerType = broker.brokerType,
-            properties = configuration)
+            brokerType = newBroker.brokerType,
+            properties = newBroker.configuration)
+
+            // Encrypt relevant broker configuration properties, and format broker object for database storage
+            val encryptedBrokerConfig:String = if(serviceEncryptionConfig.requireDataEncryption){
+                encryptionService.encryptObject(encryptedConfig)?: throw IOException("Failed to encrypt broker configuration")
+            } else {
+                brokerConfig.toString()
+            }
+
+
+            val entity = MessageBrokerConfigurationEntity(
+                brokerName = newBroker.brokerName,
+                brokerType = newBroker.brokerType,
+                keyFormat = newBroker.keySerializationFormat,
+                valueFormat = newBroker.valueSerializationFormat,
+                defaultBroker = newBroker.defaultBroker,
+                brokerConfigEncrypted = encryptedBrokerConfig,
+                brokerConfig = objectMapper.convertValue(brokerConfig),
+            )
+
+            // Store the broker configuration in the database
+            val savedBroker: MessageBrokerConfigurationEntity = messageBrokerRepository.save(entity)
+
+            // Generate a new Message Broker object from saved entity
+            val broker: MessageBroker = MessageBroker.fromEntity(savedBroker)
 
             // Generate Message Dispatcher based on broker configuration
             val dispatcher: MessageDispatcher = messageDispatcherFactory.fromBrokerConfig(
@@ -107,21 +135,8 @@ class BrokerService(
             // Validate the dispatcher to ensure that the broker is fully functional, and throw an exception if any errors occur
             dispatcher.validate()
             dispatcher.build()
-            // Encrypt relevant broker configuration properties, and format broker object for database storage
-            val encryptedBrokerConfig:String = if(serviceEncryptionConfig.requireDataEncryption){
-                encryptionService.encryptObject(encryptedConfig)?: throw IOException("Failed to encrypt broker configuration")
-            } else {
-                brokerConfig.toString()
-            }
 
-            val brokerEntity = MessageBrokerConfigurationEntity.fromConfiguration(
-                messageBroker = broker,
-                encryptedConfig = encryptedBrokerConfig,
-                brokerConfig = brokerConfig
-            )
 
-            // Store the broker configuration in the database
-            messageBrokerRepository.save(brokerEntity)
             logger.info { "Broker Service => Broker ${broker.brokerName} created successfully" }
 
             // Store the dispatcher in the dispatch service to route messages generated from other services
@@ -133,7 +148,7 @@ class BrokerService(
             return dispatcher
         }
         catch (e: Exception){
-            logger.error { "Broker Service => An error occurred when parsing broker configurations for Broker type: ${broker.brokerType} => Message: ${e.message}" }
+            logger.error { "Broker Service => An error occurred when parsing broker configurations for Broker type: ${newBroker.brokerType} => Message: ${e.message}" }
             throw e
         }
     }

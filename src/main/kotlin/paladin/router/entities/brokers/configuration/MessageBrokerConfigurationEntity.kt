@@ -10,22 +10,11 @@ import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker.BrokerType
 import paladin.router.enums.configuration.Broker.BrokerFormat
 import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import java.time.ZonedDateTime
 import java.util.*
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-@Entity
-@Table(
-    name = "message_brokers",
-    schema = "event_routing",
-    uniqueConstraints = [
-        UniqueConstraint(columnNames = ["broker_name"])
-    ],
-    indexes = [
-        Index(name = "idx_message_brokers_binder_name", columnList = "binder_name")
-    ]
-)
 /**
  * Represents the configuration details about each user provided message broker that will receive messages from the database change events
  *
@@ -42,24 +31,38 @@ import java.util.*
  *
  * If the server instance does not require encryption, the object will be stored as a JSON object in string form
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
+@Entity
+@Table(
+    name = "message_brokers",
+    schema = "event_routing",
+    uniqueConstraints = [
+        UniqueConstraint(columnNames = ["broker_name"])
+    ],
+    indexes = [
+        Index(name = "idx_message_brokers_binder_name", columnList = "broker_name"),
+
+
+    ]
+)
 data class MessageBrokerConfigurationEntity(
     @Id
     @GeneratedValue
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
     val id: UUID? = null,
 
-    @Column(name = "binder_name", nullable = false, unique = true)
+    @Column(name = "broker_name", nullable = false, unique = true)
     var brokerName: String,
 
     @Column(name = "broker_type", nullable = false)
     @Enumerated(EnumType.STRING)
     val brokerType: BrokerType,
 
-    @Column(name = "broker_key_format", nullable = true)
+    @Column(name = "key_format", nullable = true)
     @Enumerated(EnumType.STRING)
     val keyFormat: BrokerFormat?,
 
-    @Column(name = "broker_value_format", nullable = false)
+    @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
     val valueFormat: BrokerFormat,
 
@@ -80,6 +83,25 @@ data class MessageBrokerConfigurationEntity(
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     var updatedAt: ZonedDateTime = ZonedDateTime.now()
 ){
+    constructor(
+        brokerName: String,
+        brokerType: BrokerType,
+        keyFormat: BrokerFormat?,
+        valueFormat: BrokerFormat,
+        brokerConfigEncrypted: String,
+        brokerConfig: Map<String, Any>,
+        defaultBroker: Boolean = false
+    ) : this(
+        null,
+        brokerName,
+        brokerType,
+        keyFormat,
+        valueFormat,
+        brokerConfigEncrypted,
+        brokerConfig,
+        defaultBroker
+    )
+
     companion object Factory{
         fun fromConfiguration(messageBroker: MessageBroker, encryptedConfig: String, brokerConfig: BrokerConfig): MessageBrokerConfigurationEntity {
             val objectMapper = ObjectMapper()

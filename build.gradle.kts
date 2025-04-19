@@ -16,6 +16,10 @@ java {
     }
 }
 
+
+val jacksonVersion = "2.18.3" // Match the version from your error message
+
+
 configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -47,6 +51,11 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    implementation("com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.core:jackson-core:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${jacksonVersion}")
 
     // Logging
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")

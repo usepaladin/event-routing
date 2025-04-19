@@ -58,7 +58,10 @@ class EncryptionService(
      * @return Base64 encoded ciphertext (including IV prepended) or null in case of error
      */
     fun encrypt(data: String): String? {
-        val encryptionKeyBase64 = this.encryptionKeyBase64
+        if(encryptionKeyBase64 == null){
+            logger.error { "Encryption key is not set" }
+            throw IllegalStateException("Encryption key is not set")
+        }
 
         return runCatching {
             val encryptionKeyBytes = Base64.getDecoder().decode(encryptionKeyBase64)
@@ -98,7 +101,10 @@ class EncryptionService(
      * @return Decrypted plaintext String or null if decryption fails
      */
     fun decrypt(ciphertextBase64: String): String? {
-        val encryptionKeyBase64 = this.encryptionKeyBase64
+        if(encryptionKeyBase64 == null){
+            logger.error { "Encryption key is not set" }
+            throw IllegalStateException("Encryption key is not set")
+        }
 
         return runCatching {
             val encryptionKeyBytes = Base64.getDecoder().decode(encryptionKeyBase64)
