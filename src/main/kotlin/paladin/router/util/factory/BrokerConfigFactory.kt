@@ -18,8 +18,6 @@ object BrokerConfigFactory {
             Broker.BrokerType.KAFKA -> parseKafkaConfiguration(properties)
             Broker.BrokerType.RABBIT -> parseRabbitConfiguration(properties)
             Broker.BrokerType.SQS -> parseSQSConfiguration(properties)
-
-            else -> throw IllegalArgumentException("Broker type not supported")
         }
     }
 
@@ -36,8 +34,11 @@ object BrokerConfigFactory {
 
         val encryptedConfig = KafkaEncryptedConfig(
             bootstrapServers = properties["bootstrapServers"] as String,
-            //todo add other properties
         )
+
+        properties["schemaRegistryUrl"]?.let {
+            encryptedConfig.schemaRegistryUrl = it as String
+        }
 
         return Pair(brokerConfig, encryptedConfig)
     }

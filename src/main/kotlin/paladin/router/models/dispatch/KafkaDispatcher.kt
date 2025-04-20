@@ -1,11 +1,14 @@
 package paladin.router.models.dispatch
 
+import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringSerializer
+import org.springframework.kafka.support.serializer.JsonSerializer
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
@@ -64,8 +67,6 @@ data class KafkaDispatcher <T, P>(
             properties.apply {
                 put("schema.registry.url", authConfig.schemaRegistryUrl)
                 put("specific.avro.reader", true)
-//                put("basic.auth.credentials.source", "USER_INFO")
-//                put("basic.auth.user.info", "${authConfig.schemaRegistryUser}:${authConfig.schemaRegistryPassword}")
             }
         }
 
@@ -153,9 +154,9 @@ data class KafkaDispatcher <T, P>(
 
     private fun getSerializerClass(brokerFormat: Broker.BrokerFormat): String{
         return when(brokerFormat){
-            Broker.BrokerFormat.STRING -> "org.apache.kafka.common.serialization.StringSerializer"
-            Broker.BrokerFormat.JSON -> "org.springframework.kafka.support.serializer.JsonSerializer"
-            Broker.BrokerFormat.AVRO -> "io.confluent.kafka.serializers.KafkaAvroSerializer"
+            Broker.BrokerFormat.STRING -> StringSerializer::class.java.name
+            Broker.BrokerFormat.JSON -> JsonSerializer::class.java.name
+            Broker.BrokerFormat.AVRO -> KafkaAvroSerializer::class.java.name
         }
     }
 
