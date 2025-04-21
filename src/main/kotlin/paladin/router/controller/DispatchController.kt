@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import paladin.router.dto.MessageDispatchDTO
 import paladin.router.pojo.dispatch.MessageDispatcher
 import paladin.router.services.dispatch.DispatchService
 
@@ -15,19 +16,14 @@ class DispatchController(
 ) {
 
     @GetMapping("/")
-    fun getAllDispatchers(): ResponseEntity<List<MessageDispatcher>>{
+    fun getAllDispatchers(): ResponseEntity<List<MessageDispatchDTO>>{
         val dispatchers: List<MessageDispatcher> = dispatchService.getAllDispatchers()
-        return ResponseEntity.ok(dispatchers)
+        return ResponseEntity.ok(dispatchers.map { MessageDispatchDTO.fromEntity(it) })
     }
 
     @GetMapping("/{brokerName}")
-    fun getDispatcher(@PathVariable brokerName: String): ResponseEntity<MessageDispatcher>{
-        val dispatcher: MessageDispatcher? = dispatchService.getDispatcher(brokerName)
-
-        return if (dispatcher != null) {
-            ResponseEntity.ok(dispatcher)
-        } else {
-            ResponseEntity.notFound().build()
-        }
+    fun getDispatcher(@PathVariable brokerName: String): ResponseEntity<MessageDispatchDTO>{
+        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(brokerName) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(MessageDispatchDTO.fromEntity(dispatcher))
     }
 }

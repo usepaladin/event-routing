@@ -37,7 +37,9 @@ object BrokerConfigFactory {
         )
 
         properties["schemaRegistryUrl"]?.let {
-            encryptedConfig.schemaRegistryUrl = it as String
+            encryptedConfig.apply {
+                schemaRegistryUrl = it as String
+            }
         }
 
         return Pair(brokerConfig, encryptedConfig)

@@ -8,6 +8,7 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.stereotype.Service
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
+import paladin.router.dto.BrokerDTO
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.configuration.brokers.MessageBroker
@@ -157,22 +158,22 @@ class BrokerService(
      * relevant to that specific broker. Will then re-validate the broker's configuration to ensure
      * that the broker is fully functional with the correct attached configuration and connection details
      *
-     * @param updatedDispatcher - The message dispatcher with updated configuration settings to be applied and saved
+     * @param updatedBroker - The message dispatcher with updated configuration settings to be applied and saved
      * in the database
 
      */
-    fun updateBroker(updatedDispatcher: MessageDispatcher): MessageDispatcher{
+    fun updateBroker(updatedBroker: BrokerDTO): MessageDispatcher{
         // Disconnect existing dispatcher to avoid sending messages with incorrect message configuration
-        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(updatedDispatcher.broker.brokerName)
-            ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedDispatcher.broker.brokerName}")
+        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(updatedBroker.broker.brokerName)
+            ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedBroker.broker.brokerName}")
 
         dispatcher.updateConnectionState(MessageDispatcher.MessageDispatcherState.Disconnected)
 
         // Update Broker and associated configuration properties
         // Dispatch properties must be static to adhere to inheritance, meaning internal properties need to be individually updated
-        dispatcher.broker.updateConfiguration(updatedDispatcher.broker)
-        dispatcher.config.updateConfiguration(updatedDispatcher.config)
-        dispatcher.authConfig.updateConfiguration(updatedDispatcher.authConfig)
+        dispatcher.broker.updateConfiguration(updatedBroker.broker)
+        dispatcher.config.updateConfiguration(updatedBroker.config)
+        dispatcher.authConfig.updateConfiguration(updatedBroker.authConfig)
 
         dispatcher.validate()
         // Rebuild Producer with updated Properties,
@@ -186,24 +187,24 @@ class BrokerService(
 
         // Save updated configuration properties to database
         val encryptedBrokerConfig: String = if(serviceEncryptionConfig.requireDataEncryption){
-            encryptionService.encryptObject(updatedDispatcher.authConfig)?: throw IOException("Failed to encrypt broker configuration")
+            encryptionService.encryptObject(updatedBroker.authConfig)?: throw IOException("Failed to encrypt broker configuration")
         } else {
-            updatedDispatcher.config.toString()
+            updatedBroker.config.toString()
         }
 
         val brokerEntity = MessageBrokerConfigurationEntity.fromConfiguration(
-            messageBroker = updatedDispatcher.broker,
+            messageBroker = updatedBroker.broker,
             encryptedConfig = encryptedBrokerConfig,
-            brokerConfig = updatedDispatcher.config
+            brokerConfig = updatedBroker.config
         )
 
         // Store the broker configuration in the database
         messageBrokerRepository.save(brokerEntity)
-        logger.info { "Broker Service => Broker ${updatedDispatcher.broker.brokerName} updated successfully" }
+        logger.info { "Broker Service => Broker ${updatedBroker.broker.brokerName} updated successfully" }
 
         // Store the dispatcher in the dispatch service to route messages generated from other services
         dispatchService.setDispatcher(
-            updatedDispatcher.broker.brokerName,
+            updatedBroker.broker.brokerName,
             dispatcher
         )
 

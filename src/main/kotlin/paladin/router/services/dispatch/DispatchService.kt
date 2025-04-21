@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.*
 import org.apache.avro.specific.SpecificRecord
 import org.springframework.stereotype.Service
+import paladin.router.dto.MessageDispatchDTO
 import paladin.router.enums.configuration.Broker
 import paladin.router.pojo.dispatch.DispatchEvent
 import paladin.router.pojo.dispatch.MessageDispatcher

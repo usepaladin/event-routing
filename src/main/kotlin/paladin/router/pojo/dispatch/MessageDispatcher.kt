@@ -3,6 +3,7 @@ package paladin.router.pojo.dispatch
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import paladin.router.dto.MessageDispatchDTO
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
@@ -17,6 +18,11 @@ abstract class MessageDispatcher: Serializable{
     abstract val logger: KLogger
 
     private val _connectionState = MutableStateFlow<MessageDispatcherState>(MessageDispatcherState.Disconnected)
+
+    fun getConnectionState(): MessageDispatcherState {
+        return _connectionState.value
+    }
+
     val connectionState: StateFlow<MessageDispatcherState> = _connectionState
 
 

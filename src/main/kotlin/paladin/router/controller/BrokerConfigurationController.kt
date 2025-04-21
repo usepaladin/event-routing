@@ -3,6 +3,7 @@ package paladin.router.controller
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import paladin.router.dto.BrokerDTO
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.BrokerCreationRequest
 import paladin.router.pojo.dispatch.MessageDispatcher
@@ -26,7 +27,7 @@ class BrokerConfigurationController(
     }
 
     @PutMapping("/")
-    fun updateBroker(@RequestBody dispatcher: MessageDispatcher): ResponseEntity<MessageDispatcher>{
+    fun updateBroker(@RequestBody dispatcher: BrokerDTO): ResponseEntity<MessageDispatcher>{
         val updatedBroker: MessageDispatcher = brokerService.updateBroker(dispatcher)
         return ResponseEntity.status(HttpStatus.OK).body(updatedBroker)
     }
