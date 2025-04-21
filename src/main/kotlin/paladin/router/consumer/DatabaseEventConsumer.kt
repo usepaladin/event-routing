@@ -25,7 +25,9 @@ class DatabaseEventConsumer(
      */
     @KafkaListener(
         topics = ["event-routing-database"],
-        groupId = "event-router-tenant-\${TENANT_ID}")
+        groupId = "event-router-tenant-\${TENANT_ID}",
+        autoStartup = "false"
+    )
     fun routeDatabaseChangeEvent(
         @Payload event: DatabaseEventRouterValueAv,
         @Header(KafkaHeaders.RECEIVED_KEY, required = true) key: String

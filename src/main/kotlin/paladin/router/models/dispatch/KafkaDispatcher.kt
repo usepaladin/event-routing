@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
+
 import org.springframework.kafka.support.serializer.JsonSerializer
 
 import paladin.router.enums.configuration.Broker
@@ -63,11 +64,14 @@ data class KafkaDispatcher <T, P>(
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
         }
 
-        if(this.requiresSchemaRegistry()){
-            properties.apply {
+        properties.apply {
+            if(requiresSchemaRegistry){
                 put("schema.registry.url", authConfig.schemaRegistryUrl)
                 put("specific.avro.reader", true)
+                return@apply
             }
+
+            put("specific.avro.reader", false)
         }
 
         producer = KafkaProducer(properties)
@@ -99,14 +103,13 @@ data class KafkaDispatcher <T, P>(
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Request timeout must be greater than 0")
         }
 
-        if( this.requiresSchemaRegistry() && authConfig.schemaRegistryUrl.isNullOrEmpty()){
+        if( this.requiresSchemaRegistry && authConfig.schemaRegistryUrl.isNullOrEmpty()){
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
 
-    private fun requiresSchemaRegistry(): Boolean{
-        return broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
-    }
+    private val requiresSchemaRegistry =
+         broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
 
     /**
      * Converts the key and value to the appropriate type based on the broker configuration.

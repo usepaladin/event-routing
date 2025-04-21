@@ -22,11 +22,10 @@ spring:
     listener:
       type: single
       concurrency: 3
-      auto-startup: false
     consumer:
       group-id: event-router-tenant-${TENANT_ID:}
       auto-offset-reset: earliest
-      key-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}

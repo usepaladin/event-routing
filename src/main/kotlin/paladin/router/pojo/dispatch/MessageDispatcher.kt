@@ -3,7 +3,6 @@ package paladin.router.pojo.dispatch
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import paladin.router.dto.MessageDispatchDTO
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.core.BrokerConfig
 import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig

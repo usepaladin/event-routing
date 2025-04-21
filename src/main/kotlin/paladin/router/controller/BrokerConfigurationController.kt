@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import paladin.router.dto.BrokerDTO
+import paladin.router.dto.MessageDispatchDTO
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.pojo.configuration.brokers.BrokerCreationRequest
 import paladin.router.pojo.dispatch.MessageDispatcher
@@ -15,9 +16,9 @@ class BrokerConfigurationController(
     private val brokerService: BrokerService
 ) {
     @PostMapping("/")
-    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatcher>{
+    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatchDTO>{
         val createdBroker: MessageDispatcher = brokerService.createBroker(broker)
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdBroker)
+        return ResponseEntity.status(HttpStatus.CREATED).body(MessageDispatchDTO.fromEntity(createdBroker))
     }
 
     @DeleteMapping("/{brokerName}")
@@ -27,8 +28,8 @@ class BrokerConfigurationController(
     }
 
     @PutMapping("/")
-    fun updateBroker(@RequestBody dispatcher: BrokerDTO): ResponseEntity<MessageDispatcher>{
+    fun updateBroker(@RequestBody dispatcher: BrokerDTO): ResponseEntity<MessageDispatchDTO>{
         val updatedBroker: MessageDispatcher = brokerService.updateBroker(dispatcher)
-        return ResponseEntity.status(HttpStatus.OK).body(updatedBroker)
+        return ResponseEntity.status(HttpStatus.OK).body(MessageDispatchDTO.fromEntity(updatedBroker))
     }
 }
