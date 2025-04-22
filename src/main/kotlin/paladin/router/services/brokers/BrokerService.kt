@@ -61,6 +61,11 @@ class BrokerService(
             val properties: Map<String, Any> = entity.brokerConfig + encryptedConfig
             val (config: BrokerConfig, authConfig: EncryptedBrokerConfig)  = BrokerConfigFactory.fromConfigurationProperties(entity.brokerType, properties)
             val messageDispatcher: MessageDispatcher = messageDispatcherFactory.fromBrokerConfig(broker, config, authConfig)
+
+            // For each dispatcher, Validate connection to ensure that the broker is fully functional with the correct attached configuration and connection details
+            messageDispatcher.validate()
+            messageDispatcher.build()
+
             // Store the dispatcher in the dispatch service to route messages generated from other services
             dispatchService.setDispatcher(
                 broker.brokerName,
