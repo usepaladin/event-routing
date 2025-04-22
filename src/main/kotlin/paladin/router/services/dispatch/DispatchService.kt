@@ -28,7 +28,7 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
                 try{
                     dispatchToBroker(event)
                 } catch (e: Exception){
-                    logger.error(e) { "Dispatch Service => Error dispatching event => => ${event.brokerType} => ${event.brokerName} => ${event.topic} => Message: ${e.message}" }
+                    logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${event.brokerType} => ${event.brokerName} => ${event.topic} => Message: ${e.message}" }
                     // Send to DLQ For manual handling
                 }
             }

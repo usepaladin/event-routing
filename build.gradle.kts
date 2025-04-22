@@ -64,10 +64,6 @@ dependencies {
     // Service Avro Models
     implementation("paladin.avro:avro-models:0.0.8-SNAPSHOT")
 
-    // Spring cloud stream
-    implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
-    implementation("org.springframework.cloud:spring-cloud-stream")
-
     // Avro Parsing
     implementation("org.apache.avro:avro:1.12.0")
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
