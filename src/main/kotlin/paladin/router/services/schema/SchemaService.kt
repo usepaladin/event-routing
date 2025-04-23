@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.oshai.kotlinlogging.KLogger
 import org.apache.avro.Schema
+import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericDatumReader
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io.Decoder
 import org.apache.avro.io.DecoderFactory
+import org.springframework.cloud.function.context.config.isValidSuspendingSupplier
 import org.springframework.stereotype.Service
 import java.io.IOException
 import kotlin.jvm.Throws
@@ -25,20 +27,47 @@ class SchemaService(
      */
     @Throws(IOException::class)
     fun <T> parseToAvro  (schema: String, payload: T ): GenericRecord{
+        val node: Map<*, *> = objectMapper.convertValue(payload, Map::class.java)
         try{
-        // Parse the schema string into an Avro schema
-        val avroSchema: Schema = Schema.Parser().parse(schema)
+            // Parse the schema string into an Avro schema
+            val avroSchema: Schema = Schema.Parser().parse(schema)
+            val record = GenericData.Record(avroSchema)
+            avroSchema.fields.forEach{ field ->
+                val value = node[field.name()]
+                record.put(field.name(), wrapAvroValue(field.schema(), value))
+            }
 
-        // Encode payload into a Json Object for conversion
-        val jsonObject = objectMapper.writeValueAsString(payload)
-
-        // Create a GenericRecord using the Avro schema
-        val decoder: Decoder = DecoderFactory.get().jsonDecoder(avroSchema, jsonObject)
-        val reader = GenericDatumReader<GenericRecord>(avroSchema)
-        return reader.read(null, decoder)
+            return record
         } catch (e: Exception) {
             logger.error(e) { "Error encoding payload to Avro: ${e.message}" }
             throw e
+        }
+    }
+
+    private fun wrapAvroValue(schema: Schema, value: Any?): Any? {
+        return when (schema.type) {
+            Schema.Type.UNION -> {
+                val nonNullSchema = schema.types.find { it.type != Schema.Type.NULL }
+                if (value == null) null
+                else wrapAvroValue(nonNullSchema!!, value)
+            }
+            Schema.Type.MAP -> {
+                @Suppress("UNCHECKED_CAST")
+                val mapValue = value as? Map<String, Any?>
+                mapValue?.mapValues { (_, v) -> v?.toString() } // Convert values to string if required
+            }
+            Schema.Type.ENUM -> {
+                GenericData.EnumSymbol(schema, value.toString())
+            }
+            Schema.Type.LONG -> {
+                when (value) {
+                    is Number -> value.toLong()
+                    is String -> value.toLongOrNull()
+                    else -> null
+                }
+            }
+            Schema.Type.STRING -> value?.toString()
+            else -> value
         }
     }
 

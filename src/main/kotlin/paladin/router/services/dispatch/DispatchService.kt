@@ -51,7 +51,7 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
                     if(dispatcher.broker.keySerializationFormat == null){
                         dispatcher.dispatch(event.topic, event.payload, event.payloadSchema)
                     } else {
-                        dispatcher.dispatch(event.topic, event.payload, event.keySchema, event.payloadSchema)
+                        dispatcher.dispatch(event.topic, "key", event.payload, event.keySchema, event.payloadSchema)
                     }
                     return
                 }

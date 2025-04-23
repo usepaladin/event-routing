@@ -36,7 +36,7 @@ data class KafkaDispatcher <T, P>(
             return;
         }
 
-        val (parsedKey: T, parsedPayload: P) = parseMessageValues(key, payload)
+        val (parsedKey: T, parsedPayload: P) = parseMessageValues(key, payload, keySchema, payloadSchema)
         val record: ProducerRecord<T,P> = ProducerRecord(topic, parsedKey, parsedPayload)
         try {
             producer?.send(record)?.get()
