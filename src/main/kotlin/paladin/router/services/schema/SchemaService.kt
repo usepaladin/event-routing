@@ -1,5 +1,6 @@
 package paladin.router.services.schema
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -10,6 +11,7 @@ import org.apache.avro.generic.GenericDatumReader
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io.Decoder
 import org.apache.avro.io.DecoderFactory
+import org.apache.avro.specific.SpecificRecord
 import org.springframework.cloud.function.context.config.isValidSuspendingSupplier
 import org.springframework.stereotype.Service
 import java.io.IOException
@@ -27,13 +29,13 @@ class SchemaService(
      */
     @Throws(IOException::class)
     fun <T> parseToAvro  (schema: String, payload: T ): GenericRecord{
-        val node: Map<*, *> = objectMapper.convertValue(payload, Map::class.java)
+        val payloadMap: Map<String, Any?> = destructureClass(payload)
         try{
             // Parse the schema string into an Avro schema
             val avroSchema: Schema = Schema.Parser().parse(schema)
             val record = GenericData.Record(avroSchema)
             avroSchema.fields.forEach{ field ->
-                val value = node[field.name()]
+                val value = payloadMap[field.name()]
                 record.put(field.name(), wrapAvroValue(field.schema(), value))
             }
 
@@ -117,5 +119,22 @@ class SchemaService(
 
     fun <T> parseToString(payload: T): String {
         return objectMapper.writeValueAsString(payload)
+    }
+
+    private fun <T> destructureClass (payload: T): Map<String, Any?> {
+        if(payload is SpecificRecord){
+            val record = payload as GenericRecord
+            val schema = record.schema
+            val fields = schema.fields
+            val map = mutableMapOf<String, Any?>()
+            for (field in fields) {
+                val fieldName = field.name()
+                val fieldValue = record.get(fieldName)
+                map[fieldName] = fieldValue
+            }
+            return map
+        }
+
+        return objectMapper.convertValue(payload, object : TypeReference<Map<String, Any?>>() {})
     }
 }

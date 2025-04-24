@@ -12,8 +12,11 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import paladin.avro.database.ChangeEventData
+import paladin.avro.database.ChangeEventOperation
 import paladin.router.util.TestUtilServices
 import paladin.router.util.User
+import java.util.Date
 
 
 @ExtendWith(MockKExtension::class)
@@ -73,6 +76,81 @@ class SchemaServiceTest {
                 schemaService.parseToAvro(invalidSchema, user)
             }
         }
+
+    @Test
+    fun `handle avro encoding from another avro object`(){
+        val schema = """
+              {
+                    "type": "record",
+                    "name": "ChangeEventData",
+                    "fields": [
+                      {
+                        "name": "operation",
+                        "type": {
+                          "type": "enum",
+                          "name": "ChangeEventOperation",
+                          "symbols": [
+                            "CREATE",
+                            "UPDATE",
+                            "DELETE",
+                            "SNAPSHOT",
+                            "OTHER"
+                          ]
+                        }
+                      },
+                      {
+                        "name": "before",
+                        "type": ["null",{
+                          "type": "map",
+                          "values": "string"
+                        }],
+                        "default": null
+                      },
+                      {
+                        "name": "after",
+                        "type": ["null",{
+                          "type": "map",
+                          "values": "string"
+                        }],
+                        "default": null
+                      },
+                      {
+                        "name": "source",
+                        "type": ["null",{
+                          "type": "map",
+                          "values": "string"
+                        }],
+                        "default": null
+                      },
+                      {
+                        "name": "timestamp",
+                        "type": ["null", "long"],
+                        "default": null
+                      },
+                      {
+                        "name": "table",
+                        "type": ["null", "string"],
+                        "default": null
+                      }
+                    ]
+                  }
+        """.trimIndent()
+        val event = ChangeEventData(
+            ChangeEventOperation.CREATE,
+            mapOf(),
+            mapOf(),
+            mapOf(),
+            Date().time,
+            "test"
+        )
+
+        val record: GenericRecord = schemaService.parseToAvro(schema, event)
+        assertEquals(ChangeEventOperation.CREATE.toString(), record["operation"].toString())
+        assertEquals(0, (record["before"] as Map<*, *>).size)
+        assertEquals(0, (record["after"] as Map<*, *>).size)
+        assertEquals(0, (record["source"] as Map<*, *>).size)
+        assertEquals("test", record["table"].toString())
+    }
 
     @Test
     fun `parseToJson should filter only fields present in the schema`() {
