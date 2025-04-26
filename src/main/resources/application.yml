@@ -17,6 +17,10 @@ spring:
           timeout: 30000
   application:
     name: event-router${TENANT_ID:}
+
+  cloud:
+    function:
+      definition: routeDatabaseChangeEvent
   kafka:
     bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
     listener:

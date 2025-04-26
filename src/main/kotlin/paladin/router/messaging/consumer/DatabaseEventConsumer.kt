@@ -1,4 +1,4 @@
-package paladin.router.consumer
+package paladin.router.messaging.consumer
 
 import io.github.oshai.kotlinlogging.KLogger
 import org.springframework.kafka.annotation.KafkaListener
@@ -32,12 +32,6 @@ class DatabaseEventConsumer(
         @Payload event: DatabaseEventRouterValueAv,
         @Header(KafkaHeaders.RECEIVED_KEY, required = true) key: String
     ) {
-        if(key != config.tenantId) {
-            logger.warn { "Event received for different tenant" }
-            return
-        }
-
-        // Dispatch event to all recipient brokers
         val dispatchEvent: List<DispatchEvent<ChangeEventData>> = DispatchEvent.fromEvent(event)
         dispatchService.dispatchEvents(dispatchEvent)
     }
