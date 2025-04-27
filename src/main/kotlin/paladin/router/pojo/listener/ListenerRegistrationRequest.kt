@@ -8,6 +8,7 @@ data class ListenerRegistrationRequest(
     val groupId: String,
     val key: PayloadFormat,
     val value: PayloadFormat,
+    val brokers: List<String>
 ): Serializable
 
 data class PayloadFormat(

@@ -8,6 +8,7 @@ import paladin.router.dto.MessageDispatchDTO
 import paladin.router.enums.configuration.Broker
 import paladin.router.pojo.dispatch.DispatchEvent
 import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.pojo.listener.EventListener
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
@@ -22,11 +23,11 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.IO + SupervisorJob()
     
-    fun <T: SpecificRecord> dispatchEvents(events: List<DispatchEvent<T>>) = launch {
-        events.map { event ->
+    fun <T> dispatchEvents(payload: T, listener: EventListener, dispatchers: List<MessageDispatcher>) = launch {
+        dispatchers.map { dispatcher ->
             async {
                 try{
-                    dispatchToBroker(event)
+                    dispatchToBroker(payload, dispatcher)
                 } catch (e: Exception){
                     logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${event.brokerType} => ${event.brokerName} => ${event.topic} => Message: ${e.message}" }
                     // Send to DLQ For manual handling
@@ -35,14 +36,7 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
         }.awaitAll()
     }
 
-    private suspend fun <T:SpecificRecord> dispatchToBroker(event: DispatchEvent<T>){
-
-            val dispatcher: MessageDispatcher = clientBrokers[event.brokerName]
-                ?: throw IOException("No dispatcher found for broker: ${event.brokerName}")
-
-            // Validate the payload and dispatcher
-            validatePayload(event, dispatcher)
-
+    private suspend fun <T> dispatchToBroker(event: T, dispatcher: MessageDispatcher){
             // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ
             repeat(
                 MAX_RETRY_ATTEMPTS
@@ -63,22 +57,6 @@ class DispatchService(private val logger: KLogger): CoroutineScope {
             // Max retries exhausted, throw exception and send to DLQ for manual handling
             logger.error { "Dispatch Service => Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts" }
             throw IOException("Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts")
-    }
-
-    private fun <T: SpecificRecord> validatePayload(event: DispatchEvent<T>, dispatcher: MessageDispatcher){
-        // Ensure Broker is of expected type
-        if(event.brokerType != dispatcher.broker.brokerType){
-            throw IOException("Broker type mismatch: ${event.brokerType} != ${dispatcher.broker.brokerType}")
-        }
-
-        // Ensure Formats are of expected type to avoid serialization issues
-        if(event.keyFormat != dispatcher.broker.keySerializationFormat){
-            throw IOException("Broker format mismatch: ${event.keyFormat} != ${dispatcher.broker.keySerializationFormat}")
-        }
-
-        if(event.payloadFormat != dispatcher.broker.valueSerializationFormat){
-            throw IOException("Broker format mismatch: ${event.payloadFormat} != ${dispatcher.broker.valueSerializationFormat}")
-        }
     }
 
 

@@ -17,6 +17,7 @@ import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.pojo.dispatch.MessageDispatcher
 import paladin.router.services.schema.SchemaService
+import paladin.router.util.factory.SerializerFactory
 import java.util.Properties
 
 
@@ -56,9 +57,9 @@ data class KafkaDispatcher <T, P>(
         val properties = Properties()
         properties.apply {
             put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, authConfig.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.keySerializationFormat
+            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(broker.keySerializationFormat
                 ?: Broker.BrokerFormat.STRING))
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.valueSerializationFormat))
+            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(broker.valueSerializationFormat))
             put(ProducerConfig.ACKS_CONFIG, config.acks)
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
@@ -154,13 +155,4 @@ data class KafkaDispatcher <T, P>(
             }
         }
     }
-
-    private fun getSerializerClass(brokerFormat: Broker.BrokerFormat): String{
-        return when(brokerFormat){
-            Broker.BrokerFormat.STRING -> StringSerializer::class.java.name
-            Broker.BrokerFormat.JSON -> JsonSerializer::class.java.name
-            Broker.BrokerFormat.AVRO -> KafkaAvroSerializer::class.java.name
-        }
-    }
-
 }
