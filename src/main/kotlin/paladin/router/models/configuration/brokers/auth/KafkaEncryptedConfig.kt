@@ -1,4 +1,4 @@
-package paladin.router.pojo.configuration.brokers.auth
+package paladin.router.models.configuration.brokers.auth
 
 import paladin.router.util.factory.Configurable
 
@@ -12,7 +12,7 @@ data class KafkaEncryptedConfig(
     var sslTruststorePassword: String? = null,
     var sslKeystoreLocation: String? = null,
     var sslKeystorePassword: String? = null
-):EncryptedBrokerConfig{
+): EncryptedBrokerConfig {
     override fun updateConfiguration(config: Configurable): KafkaEncryptedConfig {
         if (config is KafkaEncryptedConfig) {
             this.bootstrapServers = config.bootstrapServers

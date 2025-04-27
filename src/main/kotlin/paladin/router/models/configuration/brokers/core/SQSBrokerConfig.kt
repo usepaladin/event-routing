@@ -1,4 +1,4 @@
-package paladin.router.pojo.configuration.brokers.core
+package paladin.router.models.configuration.brokers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.factory.Configurable
@@ -9,7 +9,7 @@ data class SQSBrokerConfig(
     var messageRetentionPeriod: Int = 345600,
     var visibilityTimeout: Int = 30,
     var maxNumberOfMessages: Int = 10
-) : BrokerConfig{
+) : BrokerConfig {
     override fun updateConfiguration(config: Configurable): SQSBrokerConfig {
         if (config is SQSBrokerConfig) {
             queueUrl = config.queueUrl

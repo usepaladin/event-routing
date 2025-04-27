@@ -1,4 +1,4 @@
-package paladin.router.pojo.configuration.brokers.core
+package paladin.router.models.configuration.brokers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.factory.Configurable
@@ -11,7 +11,7 @@ data class RabbitBrokerConfig(
     var exchangeName: String?,
     var queueName: String?,
     var prefetchCount: Int = 10
-) : BrokerConfig{
+) : BrokerConfig {
     override fun updateConfiguration(config: Configurable): RabbitBrokerConfig {
         if (config is RabbitBrokerConfig) {
             this.host = config.host

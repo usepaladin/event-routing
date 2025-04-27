@@ -4,9 +4,8 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.SQSEncryptedConfig
-import paladin.router.pojo.configuration.brokers.core.SQSBrokerConfig
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
+import paladin.router.models.configuration.brokers.core.SQSBrokerConfig
 import paladin.router.services.schema.SchemaService
 
 data class SQSDispatcher(
@@ -14,7 +13,7 @@ data class SQSDispatcher(
     override var config: SQSBrokerConfig,
     override var authConfig: SQSEncryptedConfig,
     override val schemaService: SchemaService
-):MessageDispatcher() {
+): MessageDispatcher() {
 
     private var producer: QueueMessagingTemplate? = null
 

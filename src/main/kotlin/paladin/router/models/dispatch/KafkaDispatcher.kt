@@ -1,44 +1,41 @@
 package paladin.router.models.dispatch
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringSerializer
-
-import org.springframework.kafka.support.serializer.JsonSerializer
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.services.schema.SchemaService
 import paladin.router.util.factory.SerializerFactory
 import java.util.Properties
 
 
-data class KafkaDispatcher <T, P>(
+data class KafkaDispatcher(
     override val broker: MessageBroker,
     override val config: KafkaBrokerConfig,
     override val authConfig: KafkaEncryptedConfig,
     override val schemaService: SchemaService
 ): MessageDispatcher()  {
-    private var producer: KafkaProducer<T,P>? = null
+    private var producer: KafkaProducer<Any,Any>? = null
     override val logger: KLogger
         get() = KotlinLogging.logger {  }
 
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
+    override fun <K, V> dispatch(key: K, value: V, dispatch: DispatchTopic) {
+        val (topic: String, keyFormat: Broker.BrokerFormat, keySchema: String?, valueFormat: Broker.BrokerFormat, valueSchema: String?) = dispatch
         if(producer == null){
             logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
             return;
         }
 
-        val (parsedKey: T, parsedPayload: P) = parseMessageValues(key, payload, keySchema, payloadSchema)
-        val record: ProducerRecord<T,P> = ProducerRecord(topic, parsedKey, parsedPayload)
+        val dispatchKey = convertToFormat(key, keyFormat, keySchema)
+        val dispatchValue = convertToFormat(value, valueFormat, valueSchema)
+        val record: ProducerRecord<Any,Any> = ProducerRecord(topic, dispatchKey, dispatchValue)
         try {
             producer?.send(record)?.get()
             logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
@@ -46,10 +43,6 @@ data class KafkaDispatcher <T, P>(
             logger.error(e) { "Kafka Broker => Broker name: ${broker.brokerName} => Error sending message to topic: $topic" }
         }
 
-    }
-
-    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
-        throw UnsupportedOperationException("Kafka does not support dispatching without a key")
     }
 
     override fun build() {
@@ -112,46 +105,33 @@ data class KafkaDispatcher <T, P>(
     private val requiresSchemaRegistry =
          broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
 
+
+
     /**
-     * Converts the key and value to the appropriate type based on the broker configuration.
+     * Converts a payload to the appropriate format based on the topic's serialisation technique
      * Also utilises any provided schema to parse the message (When using Json or Avro)
      *
-     * @param key The key of the message
-     * @param value The value of the message
+     * @param payload The value being transformed
+     * @param format The format of the payload
+     * @param schema Any associated schema to validate and transform the payload into a specific format
      *
-     * @return A pair of the parsed key and value
+     * @return A transformed value
      */
-    private fun <K, V> parseMessageValues(key: K, value: V, keySchema: String? = null, payloadSchema: String? = null): Pair<T,P> {
-        val parsedKey = convertToFormat(key, broker.keySerializationFormat ?: Broker.BrokerFormat.STRING, keySchema)
-        val parsedValue = convertToFormat(value, broker.valueSerializationFormat, payloadSchema)
-
-        if (parsedKey !is String && parsedKey !is ByteArray) {
-            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Key is not of type String or ByteArray" }
-        }
-
-        if (parsedValue !is String && parsedValue !is ByteArray) {
-            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Value is not of type String or ByteArray" }
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        return Pair(parsedKey as T, parsedValue as P)
-    }
-
-    private fun <T> convertToFormat(value: T, format: Broker.BrokerFormat, schema: String?): Any {
+    private fun <T> convertToFormat(payload: T, format: Broker.BrokerFormat, schema: String?): Any {
         return when(format){
-            Broker.BrokerFormat.STRING -> schemaService.parseToString(value)
+            Broker.BrokerFormat.STRING -> schemaService.parseToString(payload)
             Broker.BrokerFormat.JSON -> {
                 if(schema == null) {
-                    return schemaService.parseToJson(value)
+                    return schemaService.parseToJson(payload)
 
                 }
-                return schemaService.parseToJson(schema, value)
+                return schemaService.parseToJson(schema, payload)
             }
             Broker.BrokerFormat.AVRO -> {
                 if(schema == null) {
                     throw IllegalArgumentException("Schema cannot be null for Avro format")
                 }
-                return schemaService.parseToAvro(schema, value)
+                return schemaService.parseToAvro(schema, payload)
             }
         }
     }

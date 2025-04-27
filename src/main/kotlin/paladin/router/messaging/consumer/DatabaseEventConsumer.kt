@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service
 import paladin.avro.database.ChangeEventData
 import paladin.router.configuration.properties.CoreConfigurationProperties
 import paladin.avro.database.DatabaseEventRouterValueAv
-import paladin.router.pojo.dispatch.DispatchEvent
 import paladin.router.services.dispatch.DispatchService
 
 @Service

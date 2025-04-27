@@ -1,4 +1,4 @@
-package paladin.router.pojo.exceptions
+package paladin.router.models.exceptions
 
 import org.springframework.http.HttpStatus
 

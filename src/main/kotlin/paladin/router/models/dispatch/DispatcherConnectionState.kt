@@ -1,4 +1,4 @@
-package paladin.router.pojo.dispatch
+package paladin.router.models.dispatch
 
 interface DispatcherConnectionState {
 

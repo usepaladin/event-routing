@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import paladin.router.dto.MessageDispatchDTO
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.dispatch.DispatchService
 
 @RestController

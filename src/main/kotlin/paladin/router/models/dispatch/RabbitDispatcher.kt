@@ -4,9 +4,8 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.RabbitEncryptedConfig
-import paladin.router.pojo.configuration.brokers.core.RabbitBrokerConfig
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
+import paladin.router.models.configuration.brokers.core.RabbitBrokerConfig
 import paladin.router.services.schema.SchemaService
 
 data class RabbitDispatcher(

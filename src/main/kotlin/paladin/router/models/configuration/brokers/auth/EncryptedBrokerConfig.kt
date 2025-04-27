@@ -1,4 +1,4 @@
-package paladin.router.pojo.configuration.brokers.auth
+package paladin.router.models.configuration.brokers.auth
 
 import paladin.router.util.factory.Configurable
 import java.io.Serializable

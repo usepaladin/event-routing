@@ -1,4 +1,4 @@
-package paladin.router.pojo.configuration.brokers.core
+package paladin.router.models.configuration.brokers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.factory.Configurable
@@ -12,7 +12,7 @@ data class KafkaBrokerConfig(
     var requestTimeoutMs: Int = 30000,
     var retries: Int = 5,
     var acks: String = "all",
-) : BrokerConfig{
+) : BrokerConfig {
     override fun updateConfiguration(config: Configurable): KafkaBrokerConfig {
         if (config is KafkaBrokerConfig) {
             this.enableAutoCommit = config.enableAutoCommit

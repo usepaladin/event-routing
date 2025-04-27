@@ -1,11 +1,11 @@
-package paladin.router.pojo.dispatch
+package paladin.router.models.dispatch
 
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
-import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
 import paladin.router.services.schema.SchemaService
 import java.io.Serializable
 
@@ -32,8 +32,7 @@ abstract class MessageDispatcher: Serializable{
     /**
      * Uses the provided broker to dispatch a message to the appropriate destination within the brokers reach.
      */
-    abstract fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String? = null, payloadSchema: String? = null)
-    abstract fun <V> dispatch(topic: String, payload: V, payloadSchema: String? = null)
+    abstract fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic)
 
     /**
      * Builds the dispatcher of the message broker from the configuration properties

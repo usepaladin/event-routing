@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.exceptions.InvalidArgumentException
 import paladin.router.exceptions.UnauthorizedException
-import paladin.router.pojo.exceptions.ErrorResponse
+import paladin.router.models.exceptions.ErrorResponse
 import java.io.PrintWriter
 import java.io.StringWriter
 
