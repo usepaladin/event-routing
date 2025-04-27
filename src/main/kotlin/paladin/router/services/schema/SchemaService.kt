@@ -118,23 +118,32 @@ class SchemaService(
     }
 
     fun <T> parseToString(payload: T): String {
+        // When handling Avro messages, we would need to ensure we only convert the payload to a string, not any associated metadata included in the object (ie. Schema)
+        if(payload is SpecificRecord){
+            val avroPayload = destructureAvro(payload as GenericRecord)
+            return objectMapper.writeValueAsString(avroPayload)
+        }
+
         return objectMapper.writeValueAsString(payload)
     }
 
     private fun <T> destructureClass (payload: T): Map<String, Any?> {
         if(payload is SpecificRecord){
-            val record = payload as GenericRecord
-            val schema = record.schema
-            val fields = schema.fields
-            val map = mutableMapOf<String, Any?>()
-            for (field in fields) {
-                val fieldName = field.name()
-                val fieldValue = record.get(fieldName)
-                map[fieldName] = fieldValue
-            }
-            return map
+            return destructureAvro(payload as GenericRecord)
         }
 
         return objectMapper.convertValue(payload, object : TypeReference<Map<String, Any?>>() {})
+    }
+
+    private fun <T: GenericRecord> destructureAvro (payload: T): Map<String, Any?> {
+        val schema = payload.schema
+        val fields = schema.fields
+        val map = mutableMapOf<String, Any?>()
+        for (field in fields) {
+            val fieldName = field.name()
+            val fieldValue = payload.get(fieldName)
+            map[fieldName] = fieldValue
+        }
+        return map
     }
 }

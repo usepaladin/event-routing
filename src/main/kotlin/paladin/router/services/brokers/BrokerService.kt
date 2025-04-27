@@ -12,10 +12,10 @@ import paladin.router.dto.BrokerDTO
 import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
 import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.BrokerCreationRequest
-import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.BrokerCreationRequest
+import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.repository.MessageBrokerRepository
 import paladin.router.services.dispatch.DispatchService
 import paladin.router.services.encryption.EncryptionService
@@ -99,7 +99,7 @@ class BrokerService(
      * @param newBroker BrokerCreationRequest - The configuration details of the broker being added
      */
     @Throws(IllegalArgumentException::class, IOException::class)
-    fun createBroker(newBroker: BrokerCreationRequest): MessageDispatcher{
+    fun createBroker(newBroker: BrokerCreationRequest): MessageDispatcher {
         // Generate Configuration Classes based on specific broker type and configuration properties
         try{
             // Generate broker configuration properties
@@ -167,7 +167,7 @@ class BrokerService(
      * in the database
 
      */
-    fun updateBroker(updatedBroker: BrokerDTO): MessageDispatcher{
+    fun updateBroker(updatedBroker: BrokerDTO): MessageDispatcher {
         // Disconnect existing dispatcher to avoid sending messages with incorrect message configuration
         val dispatcher: MessageDispatcher = dispatchService.getDispatcher(updatedBroker.broker.brokerName)
             ?: throw BrokerNotFoundException("Dispatcher not found for broker: ${updatedBroker.broker.brokerName}")

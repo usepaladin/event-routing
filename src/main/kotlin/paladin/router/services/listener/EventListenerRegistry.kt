@@ -3,7 +3,7 @@ package paladin.router.services.listener
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.listener.KafkaMessageListenerContainer
 import org.springframework.stereotype.Service
-import paladin.router.pojo.listener.EventListener
+import paladin.router.models.listener.EventListener
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
