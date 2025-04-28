@@ -19,7 +19,7 @@ class MessageDispatcherFactory(private val schemaService: SchemaService) {
     fun fromBrokerConfig(broker: MessageBroker, config: BrokerConfig, authConfig: EncryptedBrokerConfig): MessageDispatcher {
         return when{
             config is KafkaBrokerConfig && authConfig is KafkaEncryptedConfig -> {
-                KafkaDispatcher<Any, Any>(
+                KafkaDispatcher(
                     broker = broker,
                     config = config,
                     authConfig = authConfig,
