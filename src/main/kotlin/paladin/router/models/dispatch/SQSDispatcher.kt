@@ -13,18 +13,14 @@ data class SQSDispatcher(
     override var config: SQSBrokerConfig,
     override var authConfig: SQSEncryptedConfig,
     override val schemaService: SchemaService
-): MessageDispatcher() {
+) : MessageDispatcher() {
 
     private var producer: QueueMessagingTemplate? = null
 
     override val logger: KLogger
-        get() = KotlinLogging.logger {  }
+        get() = KotlinLogging.logger { }
 
-    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
-        TODO("Not yet implemented")
-    }
-
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
+    override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         TODO("Not yet implemented")
     }
 

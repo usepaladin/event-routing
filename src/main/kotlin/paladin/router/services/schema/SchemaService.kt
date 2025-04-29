@@ -7,34 +7,29 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.oshai.kotlinlogging.KLogger
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
-import org.apache.avro.generic.GenericDatumReader
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.Decoder
-import org.apache.avro.io.DecoderFactory
 import org.apache.avro.specific.SpecificRecord
-import org.springframework.cloud.function.context.config.isValidSuspendingSupplier
 import org.springframework.stereotype.Service
 import java.io.IOException
-import kotlin.jvm.Throws
 
 @Service
 class SchemaService(
     private val objectMapper: ObjectMapper,
-    private val logger: KLogger) {
-
+    private val logger: KLogger
+) {
 
 
     /**
      * Parses the Payload into an Avro GenericRecord using the provided Avro schema.
      */
     @Throws(IOException::class)
-    fun <T> parseToAvro  (schema: String, payload: T ): GenericRecord{
+    fun <T> parseToAvro(schema: String, payload: T): GenericRecord {
         val payloadMap: Map<String, Any?> = destructureClass(payload)
-        try{
+        try {
             // Parse the schema string into an Avro schema
             val avroSchema: Schema = Schema.Parser().parse(schema)
             val record = GenericData.Record(avroSchema)
-            avroSchema.fields.forEach{ field ->
+            avroSchema.fields.forEach { field ->
                 val value = payloadMap[field.name()]
                 record.put(field.name(), wrapAvroValue(field.schema(), value))
             }
@@ -53,14 +48,17 @@ class SchemaService(
                 if (value == null) null
                 else wrapAvroValue(nonNullSchema!!, value)
             }
+
             Schema.Type.MAP -> {
                 @Suppress("UNCHECKED_CAST")
                 val mapValue = value as? Map<String, Any?>
                 mapValue?.mapValues { (_, v) -> v?.toString() } // Convert values to string if required
             }
+
             Schema.Type.ENUM -> {
                 GenericData.EnumSymbol(schema, value.toString())
             }
+
             Schema.Type.LONG -> {
                 when (value) {
                     is Number -> value.toLong()
@@ -68,6 +66,7 @@ class SchemaService(
                     else -> null
                 }
             }
+
             Schema.Type.STRING -> value?.toString()
             else -> value
         }
@@ -86,7 +85,7 @@ class SchemaService(
             val payloadNode = objectMapper.valueToTree<ObjectNode>(payload)
             val filteredNode = objectMapper.createObjectNode()
 
-            allowedFields.forEach{field ->
+            allowedFields.forEach { field ->
                 if (payloadNode.has(field)) {
                     filteredNode.set<JsonNode>(field, payloadNode.get(field))
                 } else {
@@ -119,7 +118,7 @@ class SchemaService(
 
     fun <T> parseToString(payload: T): String {
         // When handling Avro messages, we would need to ensure we only convert the payload to a string, not any associated metadata included in the object (ie. Schema)
-        if(payload is SpecificRecord){
+        if (payload is SpecificRecord) {
             val avroPayload = destructureAvro(payload as GenericRecord)
             return objectMapper.writeValueAsString(avroPayload)
         }
@@ -127,15 +126,15 @@ class SchemaService(
         return objectMapper.writeValueAsString(payload)
     }
 
-    private fun <T> destructureClass (payload: T): Map<String, Any?> {
-        if(payload is SpecificRecord){
+    private fun <T> destructureClass(payload: T): Map<String, Any?> {
+        if (payload is SpecificRecord) {
             return destructureAvro(payload as GenericRecord)
         }
 
         return objectMapper.convertValue(payload, object : TypeReference<Map<String, Any?>>() {})
     }
 
-    private fun <T: GenericRecord> destructureAvro (payload: T): Map<String, Any?> {
+    private fun <T : GenericRecord> destructureAvro(payload: T): Map<String, Any?> {
         val schema = payload.schema
         val fields = schema.fields
         val map = mutableMapOf<String, Any?>()

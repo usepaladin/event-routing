@@ -15,19 +15,19 @@ class BrokerConfigurationController(
     private val brokerService: BrokerService
 ) {
     @PostMapping("/")
-    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatchDTO>{
+    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatchDTO> {
         val createdBroker: MessageDispatcher = brokerService.createBroker(broker)
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageDispatchDTO.fromEntity(createdBroker))
     }
 
     @DeleteMapping("/{brokerName}")
-    fun deleteBroker(@PathVariable brokerName: String): ResponseEntity<Unit>{
+    fun deleteBroker(@PathVariable brokerName: String): ResponseEntity<Unit> {
         brokerService.deleteBroker(brokerName)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
     @PutMapping("/")
-    fun updateBroker(@RequestBody dispatcher: BrokerDTO): ResponseEntity<MessageDispatchDTO>{
+    fun updateBroker(@RequestBody dispatcher: BrokerDTO): ResponseEntity<MessageDispatchDTO> {
         val updatedBroker: MessageDispatcher = brokerService.updateBroker(dispatcher)
         return ResponseEntity.status(HttpStatus.OK).body(MessageDispatchDTO.fromEntity(updatedBroker))
     }

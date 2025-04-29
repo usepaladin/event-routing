@@ -21,21 +21,21 @@ data class KafkaDispatcher(
     override val config: KafkaBrokerConfig,
     override val authConfig: KafkaEncryptedConfig,
     override val schemaService: SchemaService
-): MessageDispatcher()  {
-    private var producer: KafkaProducer<Any,Any>? = null
+) : MessageDispatcher() {
+    private var producer: KafkaProducer<Any, Any>? = null
     override val logger: KLogger
-        get() = KotlinLogging.logger {  }
+        get() = KotlinLogging.logger { }
 
-    override fun <K, V> dispatch(key: K, value: V, dispatch: DispatchTopic) {
-        val (topic: String, keyFormat: Broker.BrokerFormat, keySchema: String?, valueFormat: Broker.BrokerFormat, valueSchema: String?) = dispatch
-        if(producer == null){
+    override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
+        val (dispatcherTopic: String, keyFormat: Broker.BrokerFormat, keySchema: String?, valueFormat: Broker.BrokerFormat, valueSchema: String?) = topic
+        if (producer == null) {
             logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
             return;
         }
 
         val dispatchKey = convertToFormat(key, keyFormat, keySchema)
-        val dispatchValue = convertToFormat(value, valueFormat, valueSchema)
-        val record: ProducerRecord<Any,Any> = ProducerRecord(topic, dispatchKey, dispatchValue)
+        val dispatchValue = convertToFormat(payload, valueFormat, valueSchema)
+        val record: ProducerRecord<Any, Any> = ProducerRecord(dispatcherTopic, dispatchKey, dispatchValue)
         try {
             producer?.send(record)?.get()
             logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
@@ -50,16 +50,23 @@ data class KafkaDispatcher(
         val properties = Properties()
         properties.apply {
             put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, authConfig.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(broker.keySerializationFormat
-                ?: Broker.BrokerFormat.STRING))
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(broker.valueSerializationFormat))
+            put(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(
+                    broker.keySerializationFormat
+                        ?: Broker.BrokerFormat.STRING
+                )
+            )
+            put(
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                SerializerFactory.fromFormat(broker.valueSerializationFormat)
+            )
             put(ProducerConfig.ACKS_CONFIG, config.acks)
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
         }
 
         properties.apply {
-            if(requiresSchemaRegistry){
+            if (requiresSchemaRegistry) {
                 put("schema.registry.url", authConfig.schemaRegistryUrl)
                 put("specific.avro.reader", true)
                 return@apply
@@ -97,14 +104,13 @@ data class KafkaDispatcher(
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Request timeout must be greater than 0")
         }
 
-        if( this.requiresSchemaRegistry && authConfig.schemaRegistryUrl.isNullOrEmpty()){
+        if (this.requiresSchemaRegistry && authConfig.schemaRegistryUrl.isNullOrEmpty()) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
 
     private val requiresSchemaRegistry =
-         broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
-
+        broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
 
 
     /**
@@ -118,17 +124,18 @@ data class KafkaDispatcher(
      * @return A transformed value
      */
     private fun <T> convertToFormat(payload: T, format: Broker.BrokerFormat, schema: String?): Any {
-        return when(format){
+        return when (format) {
             Broker.BrokerFormat.STRING -> schemaService.parseToString(payload)
             Broker.BrokerFormat.JSON -> {
-                if(schema == null) {
+                if (schema == null) {
                     return schemaService.parseToJson(payload)
 
                 }
                 return schemaService.parseToJson(schema, payload)
             }
+
             Broker.BrokerFormat.AVRO -> {
-                if(schema == null) {
+                if (schema == null) {
                     throw IllegalArgumentException("Schema cannot be null for Avro format")
                 }
                 return schemaService.parseToAvro(schema, payload)

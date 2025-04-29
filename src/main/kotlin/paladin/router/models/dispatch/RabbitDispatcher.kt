@@ -13,22 +13,18 @@ data class RabbitDispatcher(
     override val config: RabbitBrokerConfig,
     override val authConfig: RabbitEncryptedConfig,
     override val schemaService: SchemaService
-): MessageDispatcher() {
+) : MessageDispatcher() {
 
     private var producer: RabbitTemplate? = null
 
     override val logger: KLogger
-        get() = KotlinLogging.logger {  }
+        get() = KotlinLogging.logger { }
 
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
+    override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         TODO("Not yet implemented")
     }
 
     override fun testConnection() {
-        TODO("Not yet implemented")
-    }
-
-    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
         TODO("Not yet implemented")
     }
 

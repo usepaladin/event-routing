@@ -4,12 +4,12 @@ import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.core.BrokerConfig
 import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
 import paladin.router.services.schema.SchemaService
 import java.io.Serializable
 
-abstract class MessageDispatcher: Serializable{
+abstract class MessageDispatcher : Serializable {
     abstract val schemaService: SchemaService
     abstract val broker: MessageBroker
     abstract val config: BrokerConfig

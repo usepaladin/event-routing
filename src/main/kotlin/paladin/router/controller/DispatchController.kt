@@ -16,14 +16,15 @@ class DispatchController(
 ) {
 
     @GetMapping("/")
-    fun getAllDispatchers(): ResponseEntity<List<MessageDispatchDTO>>{
+    fun getAllDispatchers(): ResponseEntity<List<MessageDispatchDTO>> {
         val dispatchers: List<MessageDispatcher> = dispatchService.getAllDispatchers()
         return ResponseEntity.ok(dispatchers.map { MessageDispatchDTO.fromEntity(it) })
     }
 
     @GetMapping("/{brokerName}")
-    fun getDispatcher(@PathVariable brokerName: String): ResponseEntity<MessageDispatchDTO>{
-        val dispatcher: MessageDispatcher = dispatchService.getDispatcher(brokerName) ?: return ResponseEntity.notFound().build()
+    fun getDispatcher(@PathVariable brokerName: String): ResponseEntity<MessageDispatchDTO> {
+        val dispatcher: MessageDispatcher =
+            dispatchService.getDispatcher(brokerName) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(MessageDispatchDTO.fromEntity(dispatcher))
     }
 }

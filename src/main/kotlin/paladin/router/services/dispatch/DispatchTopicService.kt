@@ -6,7 +6,7 @@ import paladin.router.models.dispatch.MessageDispatcher
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class DispatchTopicService() {
+class DispatchTopicService {
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
     fun addDispatcherTopicToTopic(topic: String, dispatcher: MessageDispatcher, dispatchTopic: DispatchTopic) {
