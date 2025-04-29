@@ -7,14 +7,15 @@ import paladin.router.services.dispatch.DispatchService
 
 data class EventListener(
     val topic: String,
+    val runOnStartup: Boolean = false,
     val groupId: String,
     val key: Broker.BrokerFormat,
     val value: Broker.BrokerFormat,
     val dispatchers: List<MessageDispatcher> = emptyList(),
     private val dispatchService: DispatchService
-){
-    fun start(){}
-    fun stop(){}
-    fun processMessage(message: ConsumerRecord<Any, Any>){}
-    fun build(){}
+) {
+    fun start() {}
+    fun stop() {}
+    fun processMessage(message: ConsumerRecord<Any, Any>) {}
+    fun build() {}
 }

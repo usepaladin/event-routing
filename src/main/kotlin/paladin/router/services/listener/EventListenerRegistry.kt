@@ -1,5 +1,7 @@
 package paladin.router.services.listener
 
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.listener.ContainerProperties
 import org.springframework.kafka.listener.KafkaMessageListenerContainer
@@ -18,9 +20,14 @@ import java.util.concurrent.ConcurrentHashMap
 class EventListenerRegistry(
     private val kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>,
     private val dispatchService: DispatchService
-) {
+) : ApplicationRunner {
     private val listeners = ConcurrentHashMap<String, EventListener>()
     private val activeContainers = ConcurrentHashMap<String, KafkaMessageListenerContainer<*, *>>()
+
+    // Fetch all listeners from the database or configuration and start up all default listeners to consume topics
+    override fun run(args: ApplicationArguments?) {
+        TODO("Not yet implemented")
+    }
 
     @Throws(IllegalArgumentException::class)
     fun registerListener(listener: ListenerRegistrationRequest): EventListener {
@@ -47,22 +54,28 @@ class EventListenerRegistry(
         }
     }
 
-    private fun addListener(listener: ListenerRegistrationRequest): EventListener {
+    /**
+     * Creates an event listener and performs the following actions:
+     *  - Builds Record consumer
+     *  - Validates consumer configuration
+     *  - Saves the listener to the database
+     */
+    private fun saveListener(listener: ListenerRegistrationRequest): EventListener {
         val dispatchers: List<MessageDispatcher> = listener.brokers.map {
             dispatchService.getDispatcher(it)
                 ?: throw IllegalArgumentException("Dispatcher for broker $it not found")
         }
 
-        return EventListener(
+        val createdListener = EventListener(
             topic = listener.topic,
             groupId = listener.groupId,
             key = listener.key,
             value = listener.value,
             dispatchers = dispatchers,
             dispatchService = dispatchService
-        ).also { eventListener ->
-            listeners[listener.topic] = eventListener
-        }
+        )
+
+        createdListener.build()
     }
 
     fun unregisterListener(topic: String) {
