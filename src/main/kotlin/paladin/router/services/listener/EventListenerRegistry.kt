@@ -7,6 +7,7 @@ import org.springframework.kafka.listener.MessageListener
 import org.springframework.stereotype.Service
 import paladin.router.exceptions.ActiveListenerException
 import paladin.router.exceptions.ListenerNotFoundException
+import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.services.dispatch.DispatchService
@@ -27,11 +28,41 @@ class EventListenerRegistry(
             throw IllegalArgumentException("Listener for topic ${listener.topic} already registered")
         }
 
-        TODO()
+        return addListener(listener)
     }
 
-    fun editListener(listener: ListenerRegistrationRequest): EventListener {
-        TODO()
+    fun editListener(updatedListener: ListenerRegistrationRequest): EventListener {
+        listeners[updatedListener.topic].let {
+            if (it == null) {
+                throw ListenerNotFoundException("Listener for topic ${updatedListener.topic} not found")
+            }
+
+            activeContainers[updatedListener.topic]?.let { container ->
+                if (container.isRunning) {
+                    throw ActiveListenerException("Listener for topic ${updatedListener.topic} must be stopped before editing")
+                }
+            }
+
+            return addListener(updatedListener)
+        }
+    }
+
+    private fun addListener(listener: ListenerRegistrationRequest): EventListener {
+        val dispatchers: List<MessageDispatcher> = listener.brokers.map {
+            dispatchService.getDispatcher(it)
+                ?: throw IllegalArgumentException("Dispatcher for broker $it not found")
+        }
+
+        return EventListener(
+            topic = listener.topic,
+            groupId = listener.groupId,
+            key = listener.key,
+            value = listener.value,
+            dispatchers = dispatchers,
+            dispatchService = dispatchService
+        ).also { eventListener ->
+            listeners[listener.topic] = eventListener
+        }
     }
 
     fun unregisterListener(topic: String) {
@@ -39,6 +70,10 @@ class EventListenerRegistry(
             if (it != null && it.isRunning) {
                 throw ActiveListenerException("Listener for topic $topic must be stopped before removal")
             }
+        }
+
+        listeners[topic]?.stop().also {
+            listeners.remove(topic)
         }
     }
 
