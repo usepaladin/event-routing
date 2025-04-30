@@ -5,6 +5,7 @@ import io.hypersistence.utils.hibernate.type.array.StringArrayType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker
+import java.util.*
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
@@ -22,10 +23,10 @@ data class EventListenerConfigurationEntity(
     @Id
     @GeneratedValue
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
-    val id: String? = null,
+    val id: UUID? = null,
 
     @Column(name = "topic_name", nullable = false)
-    var topicName: String,
+    var topic: String,
 
     @Column(name = "group_id", nullable = false)
     var groupId: String,

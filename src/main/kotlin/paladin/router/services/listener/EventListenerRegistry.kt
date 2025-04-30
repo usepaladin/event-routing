@@ -1,5 +1,6 @@
 package paladin.router.services.listener
 
+import io.github.oshai.kotlinlogging.KLogger
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
@@ -12,14 +13,18 @@ import paladin.router.exceptions.ListenerNotFoundException
 import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
+import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
+import paladin.router.util.factory.toEntity
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class EventListenerRegistry(
     private val kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>,
-    private val dispatchService: DispatchService
+    private val eventListenerRepository: EventListenerRepository,
+    private val dispatchService: DispatchService,
+    private val logger: KLogger
 ) : ApplicationRunner {
     private val listeners = ConcurrentHashMap<String, EventListener>()
     private val activeContainers = ConcurrentHashMap<String, KafkaMessageListenerContainer<*, *>>()
@@ -35,7 +40,9 @@ class EventListenerRegistry(
             throw IllegalArgumentException("Listener for topic ${listener.topic} already registered")
         }
 
-        return addListener(listener)
+        return buildListener(listener).also {
+            listeners[listener.topic] = it
+        }
     }
 
     fun editListener(updatedListener: ListenerRegistrationRequest): EventListener {
@@ -50,7 +57,9 @@ class EventListenerRegistry(
                 }
             }
 
-            return addListener(updatedListener)
+            return buildListener(updatedListener, it).also { listener ->
+                listeners[updatedListener.topic] = listener
+            }
         }
     }
 
@@ -60,22 +69,53 @@ class EventListenerRegistry(
      *  - Validates consumer configuration
      *  - Saves the listener to the database
      */
-    private fun saveListener(listener: ListenerRegistrationRequest): EventListener {
-        val dispatchers: List<MessageDispatcher> = listener.brokers.map {
+    private fun buildListener(request: ListenerRegistrationRequest, prev: EventListener? = null): EventListener {
+        val dispatchers: List<MessageDispatcher> = request.brokers.map {
             dispatchService.getDispatcher(it)
                 ?: throw IllegalArgumentException("Dispatcher for broker $it not found")
         }
 
-        val createdListener = EventListener(
-            topic = listener.topic,
-            groupId = listener.groupId,
-            key = listener.key,
-            value = listener.value,
-            dispatchers = dispatchers,
-            dispatchService = dispatchService
-        )
+        val listener: EventListener = prev.let {
+            if (it == null) {
+                return@let EventListener(
+                    topic = request.topic,
+                    groupId = request.groupId,
+                    key = request.key,
+                    value = request.value,
+                    dispatchers = dispatchers,
+                    dispatchService = dispatchService
+                )
+            }
 
-        createdListener.build()
+            it.apply {
+                this.topic = request.topic
+                this.groupId = request.groupId
+                this.key = request.key
+                this.value = request.value
+                this.dispatchers = dispatchers
+            }
+        }
+
+        // Validate the listener configuration and build a Consumer
+        listener.build()
+
+        return saveListener(listener)
+    }
+
+    private fun saveListener(listener: EventListener): EventListener {
+        val entity = listener.toEntity()
+        eventListenerRepository.save(entity).also {
+            it.id.let { id ->
+                if (id == null) {
+                    throw IllegalArgumentException("Listener for topic ${listener.topic} could not be saved")
+                }
+            }
+
+            listener.id = it.id
+            logger.info { "Listener for topic ${listener.topic} registered successfully" }
+        }
+
+        return listener
     }
 
     fun unregisterListener(topic: String) {

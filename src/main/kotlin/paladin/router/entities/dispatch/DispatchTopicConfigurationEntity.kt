@@ -34,6 +34,5 @@ data class DispatchTopicConfigurationEntity(
     val valueFormat: String,
 
     @Column(name = "value_schema", nullable = true)
-    val valueSchema: String? = null,
-
-    )
+    val valueSchema: String? = null
+)

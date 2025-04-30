@@ -4,14 +4,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.dispatch.DispatchService
+import java.util.*
 
 data class EventListener(
-    val topic: String,
-    val runOnStartup: Boolean = false,
-    val groupId: String,
-    val key: Broker.BrokerFormat,
-    val value: Broker.BrokerFormat,
-    val dispatchers: List<MessageDispatcher> = emptyList(),
+    var id: UUID? = null,
+    var topic: String,
+    var runOnStartup: Boolean = false,
+    var groupId: String,
+    var key: Broker.BrokerFormat,
+    var value: Broker.BrokerFormat,
+    var dispatchers: List<MessageDispatcher> = emptyList(),
     private val dispatchService: DispatchService
 ) {
     fun start() {}
