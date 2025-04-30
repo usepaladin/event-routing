@@ -88,9 +88,6 @@ class EventListenerRegistry(
             }
         }
 
-        // Validate the listener configuration and build a Consumer
-        listener.build()
-
         return saveListener(listener)
     }
 
@@ -116,8 +113,8 @@ class EventListenerRegistry(
             }
         }
 
-        listeners[topic]?.stop().also {
-            listeners.remove(topic)
+        listeners.remove(topic).also {
+            dispatchService.removeSourceTopic(topic)
         }
     }
 
@@ -147,7 +144,8 @@ class EventListenerRegistry(
         container.start()
 
         activeContainers[topic] = container
-        listener.start()
+        logger.info { "Listener for topic $topic started successfully" }
+
     }
 
     @Throws(IllegalArgumentException::class)
@@ -165,7 +163,5 @@ class EventListenerRegistry(
                 activeContainers.remove(topic)
             }
         }
-
-        listeners[topic]?.stop()
     }
 }

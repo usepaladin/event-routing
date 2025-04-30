@@ -9,8 +9,18 @@ import java.util.concurrent.ConcurrentHashMap
 class DispatchTopicService {
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
-    fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic) {
+    fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
         dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
+        return topic
+    }
+
+    fun updateDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
+        dispatcherTopics[topic.sourceTopic]?.let { topics ->
+            if (topics.containsKey(dispatcher)) {
+                topics[dispatcher] = topic
+            }
+        }
+        return topic
     }
 
     fun getDispatchersForTopic(topic: String): ConcurrentHashMap<MessageDispatcher, DispatchTopic>? {
@@ -25,8 +35,24 @@ class DispatchTopicService {
         dispatcherTopics[topic]?.remove(dispatcher)
     }
 
-    fun getDispatchTopic(topic: String, dispatcher: MessageDispatcher): DispatchTopic? {
-        return dispatcherTopics[topic]?.get(dispatcher)
+    fun getDispatchersOnTopic(topic: String): List<DispatchTopic> {
+        return dispatcherTopics[topic].let {
+            if (it.isNullOrEmpty()) {
+                return emptyList()
+            }
+
+            it.values.toList()
+        }
+    }
+
+    fun getAllTopicsForDispatcher(dispatcher: MessageDispatcher): List<DispatchTopic> {
+        return dispatcherTopics.values.flatMap { sourceTopic ->
+            sourceTopic[dispatcher]?.let { listOf(it) } ?: emptyList()
+        }
+    }
+
+    fun getAllTopics(): List<DispatchTopic> {
+        return dispatcherTopics.values.flatMap { it.values }
     }
 }
 

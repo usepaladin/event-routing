@@ -81,23 +81,56 @@ class DispatchService(
         return clientBrokers.values.toList()
     }
 
-    fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest) {
+    fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest): DispatchTopic {
         clientBrokers[dispatcherTopic.dispatcher].let {
             if (it == null) {
                 throw BrokerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
             }
 
-            topicService.addDispatcherTopic(
+
+            return topicService.addDispatcherTopic(
                 it,
                 DispatchTopic.fromRequest(dispatcherTopic)
             )
         }
     }
 
-    fun removeDispatcherTopic() {}
-    fun editDispatcherTopic() {}
-    fun getDispatcherTopics() {}
-    fun getDispatcherTopic() {}
-    fun getAllTopics() {}
+    fun removeDispatcherFromTopic(topic: String, dispatcher: String): Unit {
+        clientBrokers[dispatcher].let {
+            if (it == null) {
+                throw BrokerNotFoundException("Dispatcher for topic $topic not found")
+            }
+            topicService.removeDispatcherFromTopic(topic, it)
+        }
+    }
 
+    fun editDispatcherForTopic(topic: DispatchTopicRequest): DispatchTopic {
+        clientBrokers[topic.dispatcher].let {
+            if (it == null) {
+                throw BrokerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
+            }
+            return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic))
+        }
+    }
+
+    fun removeSourceTopic(topic: String): Unit {
+        topicService.removeTopic(topic)
+    }
+
+    fun getDispatchersOnTopic(topic: String): List<DispatchTopic> {
+        return topicService.getDispatchersOnTopic(topic)
+    }
+
+    fun getTopicsForDispatcher(dispatcher: String): List<DispatchTopic> {
+        clientBrokers[dispatcher].let {
+            if (it == null) {
+                throw BrokerNotFoundException("Dispatcher for topic $dispatcher not found")
+            }
+            return topicService.getAllTopicsForDispatcher(it)
+        }
+    }
+
+    fun getAllTopics(): List<DispatchTopic> {
+        return topicService.getAllTopics()
+    }
 }

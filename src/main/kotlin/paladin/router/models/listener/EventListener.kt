@@ -14,8 +14,7 @@ data class EventListener(
     var value: Broker.BrokerFormat,
     private val dispatchService: DispatchService
 ) {
-    fun start() {}
-    fun stop() {}
-    fun processMessage(message: ConsumerRecord<Any, Any>) {}
-    fun build() {}
+    fun processMessage(message: ConsumerRecord<Any, Any>) {
+        dispatchService.dispatchEvents(message.key(), message.value(), this)
+    }
 }

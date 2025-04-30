@@ -1,5 +1,6 @@
 package paladin.router.controller
 
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import paladin.router.models.dispatch.DispatchTopic
@@ -8,16 +9,24 @@ import paladin.router.services.dispatch.DispatchService
 
 @RestController
 @RequestMapping("/api/topic")
-class DispatchTopicController(dispatchService: DispatchService) {
+class DispatchTopicController(private val dispatchService: DispatchService) {
 
     @GetMapping("/")
     fun getAllTopics(): ResponseEntity<List<DispatchTopic>> {
-        TODO()
+        val topics: List<DispatchTopic> = dispatchService.getAllTopics()
+        return ResponseEntity.ok(topics)
     }
 
     @GetMapping("/{topic}")
-    fun getDispatchersForTopic(@PathVariable topic: String): List<DispatchTopic> {
-        TODO()
+    fun getDispatchersForTopic(@PathVariable topic: String): ResponseEntity<List<DispatchTopic>> {
+        val dispatchers: List<DispatchTopic> = dispatchService.getDispatchersOnTopic(topic)
+        return ResponseEntity.ok(dispatchers)
+    }
+
+    @GetMapping("/dispatcher/{dispatcher}")
+    fun getAllTopicsForDispatcher(@PathVariable dispatcher: String): ResponseEntity<List<DispatchTopic>> {
+        val topics: List<DispatchTopic> = dispatchService.getTopicsForDispatcher(dispatcher)
+        return ResponseEntity.ok(topics)
     }
 
     @GetMapping("/{topic}/{dispatcher}")
@@ -29,15 +38,26 @@ class DispatchTopicController(dispatchService: DispatchService) {
     }
 
     @PostMapping("/")
-    fun addDispatcherTopic(@RequestBody dispatcherTopic: DispatchTopicRequest) {
-        TODO()
+    fun addDispatcherTopic(@RequestBody dispatcherTopic: DispatchTopicRequest): ResponseEntity<DispatchTopic> {
+        val createdTopic: DispatchTopic = dispatchService.addDispatcherTopic(dispatcherTopic)
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTopic)
     }
 
-    @PutMapping("/{topic}")
+    @PutMapping("/")
     fun updateDispatcherTopic(
         @RequestBody dispatcherTopic: DispatchTopicRequest
     ): ResponseEntity<DispatchTopic> {
-        TODO()
+        val updatedTopic: DispatchTopic = dispatchService.editDispatcherForTopic(dispatcherTopic)
+        return ResponseEntity.ok(updatedTopic)
+    }
+
+    @DeleteMapping("/{topic}/{dispatcher}")
+    fun removeDispatcherFromTopic(
+        @PathVariable topic: String,
+        @PathVariable dispatcher: String
+    ): ResponseEntity<Void> {
+        dispatchService.removeDispatcherFromTopic(topic, dispatcher)
+        return ResponseEntity.noContent().build()
     }
 
 }
