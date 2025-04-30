@@ -2,7 +2,7 @@ package paladin.router.models.configuration.brokers.core
 
 
 import paladin.router.enums.configuration.Broker.BrokerType
-import paladin.router.util.factory.Configurable
+import paladin.router.util.Configurable
 import java.io.Serializable
 
 sealed interface BrokerConfig : Serializable, Configurable {

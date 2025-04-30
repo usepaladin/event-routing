@@ -14,11 +14,14 @@ class DispatchServiceTest {
     @MockK
     private lateinit var logger: KLogger
 
+    @MockK
+    private lateinit var topicService: DispatchTopicService
+
     private lateinit var dispatchService: DispatchService
 
     @BeforeEach
-    fun setUp(){
-        dispatchService = DispatchService(logger)
+    fun setUp() {
+        dispatchService = DispatchService(topicService, logger)
     }
 
 }

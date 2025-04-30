@@ -1,7 +1,7 @@
 package paladin.router.models.configuration.brokers.auth
 
 import paladin.router.enums.configuration.SQS.Region
-import paladin.router.util.factory.Configurable
+import paladin.router.util.Configurable
 
 data class SQSEncryptedConfig(
     var region: Region,

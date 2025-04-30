@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentHashMap
 class DispatchTopicService {
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
-    fun addDispatcherTopicToTopic(topic: String, dispatcher: MessageDispatcher, dispatchTopic: DispatchTopic) {
-        dispatcherTopics.computeIfAbsent(topic) { ConcurrentHashMap() }[dispatcher] = dispatchTopic
+    fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic) {
+        dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
     }
 
     fun getDispatchersForTopic(topic: String): ConcurrentHashMap<MessageDispatcher, DispatchTopic>? {

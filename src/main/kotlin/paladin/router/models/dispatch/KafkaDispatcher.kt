@@ -6,14 +6,13 @@ import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
 import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.services.schema.SchemaService
 import paladin.router.util.factory.SerializerFactory
-import java.util.Properties
+import java.util.*
 
 
 data class KafkaDispatcher(
@@ -27,15 +26,14 @@ data class KafkaDispatcher(
         get() = KotlinLogging.logger { }
 
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
-        val (dispatcherTopic: String, keyFormat: Broker.BrokerFormat, keySchema: String?, valueFormat: Broker.BrokerFormat, valueSchema: String?) = topic
         if (producer == null) {
             logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
-            return;
+            return
         }
 
-        val dispatchKey = convertToFormat(key, keyFormat, keySchema)
-        val dispatchValue = convertToFormat(payload, valueFormat, valueSchema)
-        val record: ProducerRecord<Any, Any> = ProducerRecord(dispatcherTopic, dispatchKey, dispatchValue)
+        val dispatchKey = convertToFormat(key, topic.key, topic.keySchema)
+        val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
+        val record: ProducerRecord<Any, Any> = ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
         try {
             producer?.send(record)?.get()
             logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }

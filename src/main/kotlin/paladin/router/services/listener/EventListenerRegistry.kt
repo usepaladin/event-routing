@@ -10,7 +10,6 @@ import org.springframework.kafka.listener.MessageListener
 import org.springframework.stereotype.Service
 import paladin.router.exceptions.ActiveListenerException
 import paladin.router.exceptions.ListenerNotFoundException
-import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
@@ -70,11 +69,6 @@ class EventListenerRegistry(
      *  - Saves the listener to the database
      */
     private fun buildListener(request: ListenerRegistrationRequest, prev: EventListener? = null): EventListener {
-        val dispatchers: List<MessageDispatcher> = request.brokers.map {
-            dispatchService.getDispatcher(it)
-                ?: throw IllegalArgumentException("Dispatcher for broker $it not found")
-        }
-
         val listener: EventListener = prev.let {
             if (it == null) {
                 return@let EventListener(
@@ -82,7 +76,6 @@ class EventListenerRegistry(
                     groupId = request.groupId,
                     key = request.key,
                     value = request.value,
-                    dispatchers = dispatchers,
                     dispatchService = dispatchService
                 )
             }
@@ -92,7 +85,6 @@ class EventListenerRegistry(
                 this.groupId = request.groupId
                 this.key = request.key
                 this.value = request.value
-                this.dispatchers = dispatchers
             }
         }
 
@@ -103,8 +95,7 @@ class EventListenerRegistry(
     }
 
     private fun saveListener(listener: EventListener): EventListener {
-        val entity = listener.toEntity()
-        eventListenerRepository.save(entity).also {
+        eventListenerRepository.save(listener.toEntity()).also {
             it.id.let { id ->
                 if (id == null) {
                     throw IllegalArgumentException("Listener for topic ${listener.topic} could not be saved")

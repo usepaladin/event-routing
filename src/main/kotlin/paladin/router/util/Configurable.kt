@@ -1,4 +1,4 @@
-package paladin.router.util.factory
+package paladin.router.util
 
 /**
 + * Interface for objects that can have their configuration updated at runtime.

@@ -3,7 +3,9 @@ package paladin.router.services.dispatch
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.*
 import org.springframework.stereotype.Service
+import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.dispatch.DispatchTopic
+import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.models.listener.EventListener
 import java.io.IOException
@@ -23,23 +25,18 @@ class DispatchService(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.IO + SupervisorJob()
 
-    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener, dispatchers: List<MessageDispatcher>) =
+    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) =
         launch {
             val dispatchTopics: ConcurrentHashMap<MessageDispatcher, DispatchTopic> =
                 topicService.getDispatchersForTopic(listener.topic)
                     ?: throw IllegalStateException("Dispatch Service => No dispatchers found for topic: ${listener.topic}")
 
-            dispatchers.map { dispatcher ->
+            dispatchTopics.asIterable().map {
                 async {
+                    val (dispatcher, topic) = it
                     try {
-                        dispatchTopics[dispatcher].let { topic ->
-                            if (topic == null) {
-                                logger.error { "Dispatch Service => No dispatch topic found for dispatcher: ${dispatcher.broker.brokerName} => Topic: ${listener.topic}" }
-                                return@async
-                            }
-                            logger.info { "Dispatch Service => Dispatching event to dispatcher: ${dispatcher.broker.brokerName} => Topic: ${topic.topic} => Key: $key" }
-                            dispatchToBroker(key, value, topic, dispatcher)
-                        }
+                        logger.info { "Dispatch Service => Dispatching event to dispatcher: ${dispatcher.broker.brokerName} => Topic: ${topic.destinationTopic} => Key: $key" }
+                        dispatchToBroker(key, value, topic, dispatcher)
                     } catch (e: Exception) {
                         logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${dispatcher.broker.brokerType} - ${dispatcher.broker.brokerName} => Message: ${e.message}" }
                         // Send to DLQ For manual handling
@@ -83,5 +80,24 @@ class DispatchService(
     fun getAllDispatchers(): List<MessageDispatcher> {
         return clientBrokers.values.toList()
     }
+
+    fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest) {
+        clientBrokers[dispatcherTopic.dispatcher].let {
+            if (it == null) {
+                throw BrokerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
+            }
+
+            topicService.addDispatcherTopic(
+                it,
+                DispatchTopic.fromRequest(dispatcherTopic)
+            )
+        }
+    }
+
+    fun removeDispatcherTopic() {}
+    fun editDispatcherTopic() {}
+    fun getDispatcherTopics() {}
+    fun getDispatcherTopic() {}
+    fun getAllTopics() {}
 
 }

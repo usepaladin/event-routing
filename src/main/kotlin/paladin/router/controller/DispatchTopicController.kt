@@ -35,7 +35,6 @@ class DispatchTopicController(dispatchService: DispatchService) {
 
     @PutMapping("/{topic}")
     fun updateDispatcherTopic(
-        @PathVariable topic: String,
         @RequestBody dispatcherTopic: DispatchTopicRequest
     ): ResponseEntity<DispatchTopic> {
         TODO()

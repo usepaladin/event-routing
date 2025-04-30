@@ -1,6 +1,6 @@
 package paladin.router.models.configuration.brokers.auth
 
-import paladin.router.util.factory.Configurable
+import paladin.router.util.Configurable
 
 data class RabbitEncryptedConfig (
     var addresses: String? = null,

@@ -41,11 +41,7 @@ data class EventListenerConfigurationEntity(
     @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
     val valueFormat: Broker.BrokerFormat,
-
-    @Type(StringArrayType::class)
-    @Column(name = "dispatchers", nullable = false)
-    val dispatchers: List<String> = listOf(),
-
+    
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP", updatable = false)
     var createdAt: String = "CURRENT_TIMESTAMP",
 

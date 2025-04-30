@@ -2,14 +2,7 @@ package paladin.router.controller
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import paladin.router.dto.EventListenerDTO
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.services.listener.EventListenerRegistry
@@ -56,11 +49,8 @@ class TopicListenerController(private val eventListenerRegistry: EventListenerRe
 
     @DeleteMapping("/{topic}")
     fun deleteListener(@PathVariable topic: String): ResponseEntity<Unit> {
-        eventListenerRegistry.getListener(topic)?.let {
-            eventListenerRegistry.unregisterListener(it)
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
-        }
-        return ResponseEntity.notFound().build()
+        eventListenerRegistry.unregisterListener(topic)
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
     @PostMapping("/{topic}/start")
@@ -71,7 +61,7 @@ class TopicListenerController(private val eventListenerRegistry: EventListenerRe
 
     @PostMapping("/{topic}/pause")
     fun pauseListener(@PathVariable topic: String): ResponseEntity<Unit> {
-        eventListenerRegistry.pauseListener(topic)
+        eventListenerRegistry.stopListener(topic)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 }

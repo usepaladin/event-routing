@@ -1,7 +1,7 @@
 package paladin.router.models.configuration.brokers.core
 
 import paladin.router.enums.configuration.Broker
-import paladin.router.util.factory.Configurable
+import paladin.router.util.Configurable
 
 data class SQSBrokerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.SQS,
