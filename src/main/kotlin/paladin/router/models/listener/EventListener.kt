@@ -5,7 +5,7 @@ import paladin.router.enums.configuration.Broker
 import paladin.router.services.dispatch.DispatchService
 import java.util.*
 
-data class EventListener(
+open class EventListener(
     var id: UUID? = null,
     var topic: String,
     var runOnStartup: Boolean = false,
@@ -14,7 +14,7 @@ data class EventListener(
     var value: Broker.BrokerFormat,
     private val dispatchService: DispatchService
 ) {
-    fun processMessage(message: ConsumerRecord<Any, Any>) {
+    open fun processMessage(message: ConsumerRecord<Any, Any>) {
         dispatchService.dispatchEvents(message.key(), message.value(), this)
     }
 }
