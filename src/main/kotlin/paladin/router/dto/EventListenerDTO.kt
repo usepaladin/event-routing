@@ -9,15 +9,14 @@ data class EventListenerDTO(
     val key: Broker.BrokerFormat,
     val value: Broker.BrokerFormat,
     val dispatchers: List<MessageDispatchDTO> = emptyList(),
-){
-    companion object Factory{
+) {
+    companion object Factory {
         fun from(listener: EventListener): EventListenerDTO {
             return EventListenerDTO(
                 topic = listener.topic,
                 groupId = listener.groupId,
                 key = listener.key,
                 value = listener.value,
-                dispatchers = listener.dispatchers.map { MessageDispatchDTO.fromEntity(it) }
             )
         }
     }

@@ -1,10 +1,9 @@
 package paladin.router.entities.listener
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import io.hypersistence.utils.hibernate.type.array.StringArrayType
 import jakarta.persistence.*
-import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker
+import java.time.ZonedDateTime
 import java.util.*
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -34,17 +33,17 @@ data class EventListenerConfigurationEntity(
     @Column(name = "run_on_startup", nullable = false)
     var runOnStartup: Boolean = false,
 
-    @Column(name = "key_format", nullable = true)
+    @Column(name = "key_format", nullable = false)
     @Enumerated(EnumType.STRING)
-    val keyFormat: Broker.BrokerFormat?,
+    val keyFormat: Broker.BrokerFormat,
 
     @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
     val valueFormat: Broker.BrokerFormat,
-    
+
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP", updatable = false)
-    var createdAt: String = "CURRENT_TIMESTAMP",
+    var createdAt: ZonedDateTime = ZonedDateTime.now(),
 
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    var updatedAt: String = "CURRENT_TIMESTAMP"
+    var updatedAt: ZonedDateTime = ZonedDateTime.now()
 )

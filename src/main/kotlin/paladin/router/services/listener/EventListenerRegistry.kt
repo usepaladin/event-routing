@@ -30,7 +30,49 @@ class EventListenerRegistry(
 
     // Fetch all listeners from the database or configuration and start up all default listeners to consume topics
     override fun run(args: ApplicationArguments?) {
-        TODO("Not yet implemented")
+        logger.info { "Initializing EventListenerRegistry and starting default listeners" }
+
+        try {
+            // Fetch all listeners from the database
+            val storedListeners = eventListenerRepository.findAll()
+
+            if (storedListeners.isEmpty()) {
+                logger.info { "No listeners found in the database" }
+                return
+            }
+
+            // Convert to EventListener objects and add to the listeners map
+            storedListeners.forEach { entity ->
+                try {
+                    val listener = EventListener(
+                        id = entity.id,
+                        topic = entity.topic,
+                        runOnStartup = entity.runOnStartup,
+                        groupId = entity.groupId,
+                        key = entity.keyFormat,
+                        value = entity.valueFormat,
+                        dispatchService = dispatchService
+                    )
+
+                    listeners[entity.topic] = listener
+                    logger.info { "Loaded listener for topic ${entity.topic} from database" }
+
+                    // Start listeners that are configured to run on startup
+                    if (entity.runOnStartup) {
+                        try {
+                            startListener(entity.topic)
+                            logger.info { "Started listener for topic ${entity.topic} on startup" }
+                        } catch (e: Exception) {
+                            logger.error(e) { "Failed to start listener for topic ${entity.topic} on startup" }
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error(e) { "Failed to initialize listener for topic ${entity.topic}" }
+                }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to initialize EventListenerRegistry" }
+        }
     }
 
     @Throws(IllegalArgumentException::class)

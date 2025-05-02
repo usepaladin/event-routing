@@ -1,4 +1,3 @@
-
 plugins {
     kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.25"
@@ -29,7 +28,7 @@ configurations {
 repositories {
     mavenCentral()
     maven("https://packages.confluent.io/maven/")
-    maven{
+    maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/usepaladin/avro-schemas")
         credentials {
@@ -82,6 +81,11 @@ dependencies {
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.2")
 
     // Testing Libraries
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:rabbitmq")
+    testImplementation("org.testcontainers:kafka")
+    testImplementation("org.testcontainers:postgresql")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

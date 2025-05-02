@@ -13,8 +13,7 @@ fun EventListener.toEntity(): EventListenerConfigurationEntity {
         groupId = this.groupId,
         runOnStartup = this.runOnStartup,
         keyFormat = this.key,
-        valueFormat = this.value,
-        dispatchers = this.dispatchers.map { it.broker.brokerName }
+        valueFormat = this.value
     )
 }
 

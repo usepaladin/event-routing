@@ -10,7 +10,7 @@ import java.util.*
 @Table(
     name = "dispatch_topic", schema = "event_routing",
     indexes = [
-        Index(name = "idx_dispatch_topic_name", columnList = "topic_name"),
+        Index(name = "idx_dispatch_source_topic_name", columnList = "source_topic"),
     ]
 )
 data class DispatchTopicConfigurationEntity(
@@ -19,12 +19,12 @@ data class DispatchTopicConfigurationEntity(
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
     val id: UUID? = null,
 
-    @Column(name = "source_topic_name", nullable = false)
+    @Column(name = "source_topic", nullable = false)
     var sourceTopic: String,
 
-    @Column(name = "destination_topic_name", nullable = false)
+    @Column(name = "destination_topic", nullable = false)
     var destinationTopic: String,
-    
+
     @Column(name = "key_format", nullable = true)
     @Enumerated(EnumType.STRING)
     val keyFormat: Broker.BrokerFormat? = null,
