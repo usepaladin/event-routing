@@ -26,6 +26,7 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
+import paladin.router.util.TestKafkaProducerFactory
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -68,9 +69,6 @@ class EventListenerIntegrationTest {
     private lateinit var kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
 
     @Autowired
-    private lateinit var kafkaTemplate: KafkaTemplate<String, String>
-
-    @Autowired
     private lateinit var eventListenerRepository: EventListenerRepository
 
     @Autowired
@@ -93,6 +91,14 @@ class EventListenerIntegrationTest {
             latch.countDown()
             Job()
         }
+
+        @Suppress("UNCHECKED_CAST")
+        val template = TestKafkaProducerFactory.createKafkaTemplate(
+            kafkaContainer,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.STRING
+        ) as KafkaTemplate<String, String>
+
         // Register EventListener
         val registry = EventListenerRegistry(
             kafkaConsumerFactory,
@@ -116,7 +122,7 @@ class EventListenerIntegrationTest {
 
         // Act: Send a message to Kafka
         val record = ProducerRecord(topic, key, value)
-        kafkaTemplate.send(record).get()
+        template.send(record).get()
 
         // Assert: Verify message processing
         val processed = latch.await(5, TimeUnit.SECONDS)
@@ -143,6 +149,13 @@ class EventListenerIntegrationTest {
         // Mock DispatchService to count messages
         val spiedDispatchService = spyk(dispatchService)
 
+        @Suppress("UNCHECKED_CAST")
+        val template = TestKafkaProducerFactory.createKafkaTemplate(
+            kafkaContainer,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.STRING
+        ) as KafkaTemplate<String, String>
+
         // Register EventListener
         val registry = EventListenerRegistry(
             kafkaConsumerFactory,
@@ -164,7 +177,7 @@ class EventListenerIntegrationTest {
         // Act: Send multiple messages
         repeat(messageCount) { index ->
             val record: ProducerRecord<String, String> = ProducerRecord(topic, "key-$index", "value-$index")
-            kafkaTemplate.send(record).get()
+            template.send(record).get()
         }
 
         // Assert: Verify all messages are processed
