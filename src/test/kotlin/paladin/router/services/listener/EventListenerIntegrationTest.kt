@@ -4,7 +4,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.spyk
-import kotlinx.coroutines.Job
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -22,6 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
 import paladin.router.enums.configuration.Broker
+import paladin.router.models.listener.AdditionalConsumerProperties
 import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
@@ -85,11 +85,12 @@ class EventListenerIntegrationTest {
 
         // Mock DispatchService to verify dispatchEvents call
         val spiedDispatchService = spyk(dispatchService)
+
         coEvery {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Job()
+            Any()
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -107,11 +108,21 @@ class EventListenerIntegrationTest {
             KotlinLogging.logger {}
         )
 
+        val properties = AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000
+        )
+
         val request = ListenerRegistrationRequest(
             topic = topic,
             groupId = groupId,
             key = Broker.BrokerFormat.STRING,
-            value = Broker.BrokerFormat.STRING
+            value = Broker.BrokerFormat.STRING,
+            runOnStartup = false,
+            config = properties
         )
 
         val listener = registry.registerListener(request)
@@ -164,11 +175,21 @@ class EventListenerIntegrationTest {
             KotlinLogging.logger {}
         )
 
+        val properties = AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000
+        )
+
         val request = ListenerRegistrationRequest(
             topic = topic,
             groupId = groupId,
             key = Broker.BrokerFormat.STRING,
-            value = Broker.BrokerFormat.STRING
+            value = Broker.BrokerFormat.STRING,
+            config = properties,
+            runOnStartup = false
         )
 
         registry.registerListener(request)

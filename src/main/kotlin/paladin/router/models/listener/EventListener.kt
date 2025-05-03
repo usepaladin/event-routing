@@ -12,6 +12,7 @@ open class EventListener(
     var groupId: String,
     var key: Broker.BrokerFormat,
     var value: Broker.BrokerFormat,
+    val config: AdditionalConsumerProperties,
     private val dispatchService: DispatchService
 ) {
     open fun processMessage(message: ConsumerRecord<Any, Any>) {

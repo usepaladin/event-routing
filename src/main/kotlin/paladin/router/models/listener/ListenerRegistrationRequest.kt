@@ -8,6 +8,7 @@ data class ListenerRegistrationRequest(
     val groupId: String,
     val runOnStartup: Boolean = false,
     val key: Broker.BrokerFormat,
-    val value: Broker.BrokerFormat
+    val value: Broker.BrokerFormat,
+    val config: AdditionalConsumerProperties,
 ) : Serializable
 

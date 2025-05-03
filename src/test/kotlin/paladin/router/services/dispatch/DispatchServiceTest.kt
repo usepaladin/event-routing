@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -17,11 +18,12 @@ class DispatchServiceTest {
     @MockK
     private lateinit var topicService: DispatchTopicService
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var dispatchService: DispatchService
 
     @BeforeEach
     fun setUp() {
-        dispatchService = DispatchService(topicService, logger)
+        dispatchService = DispatchService(topicService, logger, testDispatcher)
     }
 
 }

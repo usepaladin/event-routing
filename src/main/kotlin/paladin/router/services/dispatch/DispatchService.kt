@@ -2,6 +2,7 @@ package paladin.router.services.dispatch
 
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.*
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import paladin.router.exceptions.BrokerNotFoundException
 import paladin.router.models.dispatch.DispatchTopic
@@ -19,13 +20,14 @@ private const val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
 @Service
 class DispatchService(
     private val topicService: DispatchTopicService,
-    private val logger: KLogger
+    private val logger: KLogger,
+    @Qualifier("coroutineDispatcher") private val dispatcher: CoroutineDispatcher
 ) : CoroutineScope {
     private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
     override val coroutineContext: CoroutineContext
-        get() = Dispatchers.IO + SupervisorJob()
+        get() = dispatcher + SupervisorJob()
 
-    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) =
+    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) {
         launch {
             val dispatchTopics: ConcurrentHashMap<MessageDispatcher, DispatchTopic> =
                 topicService.getDispatchersForTopic(listener.topic)
@@ -44,6 +46,7 @@ class DispatchService(
                 }
             }.awaitAll()
         }
+    }
 
     private suspend fun <K, V> dispatchToBroker(key: K, value: V, topic: DispatchTopic, dispatcher: MessageDispatcher) {
         // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ

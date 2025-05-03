@@ -14,7 +14,8 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
-import paladin.router.util.factory.toEntity
+import paladin.router.util.factory.ConsumerConfigFactory
+import paladin.router.util.factory.EntityFactory.toEntity
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -51,6 +52,7 @@ class EventListenerRegistry(
                         groupId = entity.groupId,
                         key = entity.keyFormat,
                         value = entity.valueFormat,
+                        config = entity.consumerProperties,
                         dispatchService = dispatchService
                     )
 
@@ -118,7 +120,9 @@ class EventListenerRegistry(
                     groupId = request.groupId,
                     key = request.key,
                     value = request.value,
-                    dispatchService = dispatchService
+                    dispatchService = dispatchService,
+                    config = request.config,
+                    runOnStartup = request.runOnStartup
                 )
             }
 
@@ -177,17 +181,31 @@ class EventListenerRegistry(
             throw IllegalArgumentException("Listener for topic $topic already started")
         }
 
+        // Create a consumer factory with the appropriate deserializers based on listener configuration
+        val consumerFactory = createConsumerFactory(listener)
         val containerProps = ContainerProperties(topic)
+
         containerProps.messageListener = MessageListener {
             listener.processMessage(it)
         }
 
-        val container = KafkaMessageListenerContainer(kafkaConsumerFactory, containerProps)
+        val container = KafkaMessageListenerContainer(consumerFactory, containerProps)
         container.start()
 
         activeContainers[topic] = container
-        logger.info { "Listener for topic $topic started successfully" }
+        logger.info { "Listener for topic $topic started successfully with key format ${listener.key} and value format ${listener.value}" }
+    }
 
+    /**
+     * Creates a consumer factory with the appropriate deserializers based on the listener configuration
+     */
+    private fun createConsumerFactory(listener: EventListener): DefaultKafkaConsumerFactory<*, *> {
+        // Get base configuration from the existing consumer factory
+        val baseConfig = HashMap(kafkaConsumerFactory.configurationProperties)
+        val (config, keyDeserializer, valueDeserializer) = ConsumerConfigFactory.buildConsumer(baseConfig, listener)
+
+        // Create a new consumer factory with the updated configuration and deserializers
+        return DefaultKafkaConsumerFactory(config, keyDeserializer, valueDeserializer)
     }
 
     @Throws(IllegalArgumentException::class)
