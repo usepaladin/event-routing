@@ -186,6 +186,7 @@ class EventListenerRegistry(
         val containerProps = ContainerProperties(topic)
 
         containerProps.messageListener = MessageListener {
+            logger.debug { "Event Listener => Topic: $topic => Event consumed" }
             listener.processMessage(it)
         }
 

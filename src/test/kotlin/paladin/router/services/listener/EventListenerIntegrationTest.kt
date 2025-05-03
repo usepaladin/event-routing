@@ -1,5 +1,8 @@
 package paladin.router.services.listener
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -7,7 +10,9 @@ import io.mockk.spyk
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
@@ -27,6 +32,7 @@ import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
 import paladin.router.util.TestKafkaProducerFactory
+import paladin.router.util.TestLogAppender
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -39,6 +45,16 @@ import kotlin.test.assertNotNull
 @ActiveProfiles("test")
 @Testcontainers
 class EventListenerIntegrationTest {
+
+    private lateinit var testAppender: TestLogAppender
+    private var logger: KLogger = KotlinLogging.logger {}
+    private lateinit var logbackLogger: Logger
+
+    @BeforeEach
+    fun setup() {
+        logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
+        testAppender = TestLogAppender.factory(logbackLogger, Level.DEBUG)
+    }
 
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -105,7 +121,7 @@ class EventListenerIntegrationTest {
             kafkaConsumerFactory,
             eventListenerRepository,
             spiedDispatchService,
-            KotlinLogging.logger {}
+            logger
         )
 
         val properties = AdditionalConsumerProperties(
@@ -160,6 +176,13 @@ class EventListenerIntegrationTest {
         // Mock DispatchService to count messages
         val spiedDispatchService = spyk(dispatchService)
 
+        coEvery {
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+        } coAnswers {
+            latch.countDown()
+            Any()
+        }
+
         @Suppress("UNCHECKED_CAST")
         val template = TestKafkaProducerFactory.createKafkaTemplate(
             kafkaContainer,
@@ -172,7 +195,7 @@ class EventListenerIntegrationTest {
             kafkaConsumerFactory,
             eventListenerRepository,
             spiedDispatchService,
-            KotlinLogging.logger {}
+            logger
         )
 
         val properties = AdditionalConsumerProperties(
@@ -209,7 +232,7 @@ class EventListenerIntegrationTest {
         coVerify(exactly = messageCount) {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
         }
-
+        
         // Cleanup
         registry.stopListener(topic)
     }
