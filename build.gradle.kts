@@ -82,6 +82,7 @@ dependencies {
 
     // Testing Libraries
     testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("io.confluent:kafka-schema-registry-client:7.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:rabbitmq")

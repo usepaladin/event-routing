@@ -1,6 +1,7 @@
 package paladin.router.util
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -10,17 +11,20 @@ import org.testcontainers.kafka.ConfluentKafkaContainer
 import paladin.router.enums.configuration.Broker
 
 object TestKafkaProducerFactory {
-
-
     fun createKafkaTemplate(
         container: ConfluentKafkaContainer,
-        keySerializer: Broker.BrokerFormat,
-        valueSerializer: Broker.BrokerFormat
+        key: Broker.BrokerFormat,
+        value: Broker.BrokerFormat,
+        schemaRegistryUrl: String? = null
     ): KafkaTemplate<Any, Any> {
-        val keySerializerClass = fromFormat(keySerializer)
-        val valueSerializerClass = fromFormat(valueSerializer)
+        val keySerializerClass = fromFormat(key)
+        val valueSerializerClass = fromFormat(value)
 
-        val producerProps = mapOf(
+        if (includesAvro(key, value) && schemaRegistryUrl != null) {
+            throw IllegalArgumentException("Schema Registry URL must be provided when testing Avro serialization.")
+        }
+
+        val producerProps = mutableMapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to container.bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to keySerializerClass,
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to valueSerializerClass,
@@ -28,10 +32,12 @@ object TestKafkaProducerFactory {
             ProducerConfig.RETRIES_CONFIG to 3,
             ProducerConfig.LINGER_MS_CONFIG to 1,
             ProducerConfig.BATCH_SIZE_CONFIG to 16384
-
-
         )
-        val producerFactory = DefaultKafkaProducerFactory<Any, Any>(producerProps)
+        if (includesAvro(key, value)) {
+            producerProps["schema.registry.url"] = schemaRegistryUrl
+            producerProps[KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = schemaRegistryUrl
+        }
+        val producerFactory = DefaultKafkaProducerFactory<Any, Any>(producerProps.toMap())
         return KafkaTemplate(producerFactory)
     }
 
@@ -43,4 +49,7 @@ object TestKafkaProducerFactory {
         }
     }
 
+    private fun includesAvro(key: Broker.BrokerFormat, value: Broker.BrokerFormat): Boolean {
+        return key == Broker.BrokerFormat.AVRO || value == Broker.BrokerFormat.AVRO
+    }
 }

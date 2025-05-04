@@ -2,6 +2,8 @@ package paladin.router.services.listener
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.coEvery
@@ -31,8 +33,7 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
-import paladin.router.util.TestKafkaProducerFactory
-import paladin.router.util.TestLogAppender
+import paladin.router.util.*
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -50,6 +51,7 @@ class EventListenerIntegrationTest {
     private var logger: KLogger = KotlinLogging.logger {}
     private lateinit var logbackLogger: Logger
 
+
     @BeforeEach
     fun setup() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
@@ -59,6 +61,10 @@ class EventListenerIntegrationTest {
     companion object {
         private val logger = KotlinLogging.logger {}
         private val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+        private val schemaRegistryContainer =
+            SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0")).withKafka(
+                kafkaContainer
+            )
 
         @BeforeAll
         @JvmStatic
@@ -78,6 +84,7 @@ class EventListenerIntegrationTest {
         @JvmStatic
         fun kafkaProperties(registry: DynamicPropertyRegistry) {
             registry.add("spring.kafka.bootstrap-servers") { kafkaContainer.bootstrapServers }
+            registry.add("spring.kafka.schema-registry-url") { schemaRegistryContainer.schemaRegistryUrl }
         }
     }
 
@@ -92,7 +99,6 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `should register and process message through EventListener`() {
-        // Arrange
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val key = "test-key"
@@ -232,9 +238,60 @@ class EventListenerIntegrationTest {
         coVerify(exactly = messageCount) {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
         }
-        
+
         // Cleanup
         registry.stopListener(topic)
+    }
+
+    @Test
+    fun `event listener should handle and deserialize avro based payloads`() {
+        val topic = "test-topic-${UUID.randomUUID()}"
+        val groupId = "test-group"
+        val latch = CountDownLatch(1)
+        val keySchema = AvroSchema(
+            """
+            {
+                "type": "record",
+                "name": "Key",
+                "namespace": "com.example",
+                "fields": [
+                    {"name": "id", "type": "string"}
+                ]
+            }
+        """.trimIndent()
+        )
+
+        val valueSchema = AvroSchema(
+            """
+            {
+                "type": "record",
+                "name": "Value",
+                "namespace": "com.example",
+                "fields": [
+                    {"name": "name", "type": "string"},
+                    {"name": "age", "type": "int"}
+                ]
+            }
+        """.trimIndent()
+        )
+
+        val client: CachedSchemaRegistryClient = SchemaRegistryFactory.init(
+            schemaRegistryContainer.schemaRegistryUrl,
+            listOf(
+                SchemaRegistrationOperation(keySchema, topic, SchemaRegistrationOperation.SchemaType.KEY),
+                SchemaRegistrationOperation(valueSchema, topic, SchemaRegistrationOperation.SchemaType.VALUE)
+            )
+        )
+
+    }
+
+    @Test
+    fun `event listener should handle and deserialize json based payloads`() {
+
+    }
+
+    @Test
+    fun `event listener should handle combination based payloads`() {
     }
 }
 
