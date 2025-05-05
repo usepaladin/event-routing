@@ -3,12 +3,12 @@ package paladin.router.services.listener
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.spyk
+import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -24,9 +24,11 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.testcontainers.containers.Network
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
+import paladin.avro.database.ChangeEventData
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.listener.AdditionalConsumerProperties
 import paladin.router.models.listener.EventListener
@@ -60,24 +62,36 @@ class EventListenerIntegrationTest {
 
     companion object {
         private val logger = KotlinLogging.logger {}
+        private val network = Network.newNetwork()
+
+        // Give Kafka a consistent network alias
         private val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+            .withNetwork(network)
+            .withNetworkAliases("kafka")
+
         private val schemaRegistryContainer =
-            SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0")).withKafka(
-                kafkaContainer
-            )
+            SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))
+                .withNetwork(network)
 
         @BeforeAll
         @JvmStatic
         fun startKafka() {
             kafkaContainer.start()
             logger.info { "Kafka container started with bootstrap servers: ${kafkaContainer.bootstrapServers}" }
+
+            // Register and start schema registry after Kafka is running
+            schemaRegistryContainer.registerKafkaContainer(kafkaContainer)
+            schemaRegistryContainer.start()
+            logger.info { "Schema Registry started with URL: ${schemaRegistryContainer.schemaRegistryUrl}" }
         }
 
         @AfterAll
         @JvmStatic
         fun stopKafka() {
+            schemaRegistryContainer.stop()
             kafkaContainer.stop()
-            logger.info { "Kafka container stopped" }
+            network.close()
+            logger.info { "Containers stopped and network closed" }
         }
 
         @DynamicPropertySource
@@ -107,6 +121,13 @@ class EventListenerIntegrationTest {
 
         // Mock DispatchService to verify dispatchEvents call
         val spiedDispatchService = spyk(dispatchService)
+        val (registry: EventListenerRegistry, listener: EventListener) = configureEventListener(
+            spiedDispatchService,
+            topic,
+            groupId,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.STRING
+        )
 
         coEvery {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
@@ -122,32 +143,7 @@ class EventListenerIntegrationTest {
             Broker.BrokerFormat.STRING
         ) as KafkaTemplate<String, String>
 
-        // Register EventListener
-        val registry = EventListenerRegistry(
-            kafkaConsumerFactory,
-            eventListenerRepository,
-            spiedDispatchService,
-            logger
-        )
 
-        val properties = AdditionalConsumerProperties(
-            autoOffsetReset = "earliest",
-            enableAutoCommit = true,
-            maxPollRecords = 10,
-            maxPollIntervalMs = 300000,
-            sessionTimeoutMs = 10000
-        )
-
-        val request = ListenerRegistrationRequest(
-            topic = topic,
-            groupId = groupId,
-            key = Broker.BrokerFormat.STRING,
-            value = Broker.BrokerFormat.STRING,
-            runOnStartup = false,
-            config = properties
-        )
-
-        val listener = registry.registerListener(request)
         assertNotNull(listener.id, "Listener ID should be set after registration")
 
         // Start the listener
@@ -179,8 +175,15 @@ class EventListenerIntegrationTest {
         val messageCount = 3
         val latch = CountDownLatch(messageCount)
 
-        // Mock DispatchService to count messages
-        val spiedDispatchService = spyk(dispatchService)
+        // Mock DispatchService to verify dispatchEvents call
+        val spiedDispatchService: DispatchService = spyk(dispatchService)
+        val (registry: EventListenerRegistry, _: EventListener) = configureEventListener(
+            spiedDispatchService,
+            topic,
+            groupId,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.AVRO
+        )
 
         coEvery {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
@@ -193,35 +196,10 @@ class EventListenerIntegrationTest {
         val template = TestKafkaProducerFactory.createKafkaTemplate(
             kafkaContainer,
             Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING
+            Broker.BrokerFormat.AVRO
         ) as KafkaTemplate<String, String>
 
-        // Register EventListener
-        val registry = EventListenerRegistry(
-            kafkaConsumerFactory,
-            eventListenerRepository,
-            spiedDispatchService,
-            logger
-        )
 
-        val properties = AdditionalConsumerProperties(
-            autoOffsetReset = "earliest",
-            enableAutoCommit = true,
-            maxPollRecords = 10,
-            maxPollIntervalMs = 300000,
-            sessionTimeoutMs = 10000
-        )
-
-        val request = ListenerRegistrationRequest(
-            topic = topic,
-            groupId = groupId,
-            key = Broker.BrokerFormat.STRING,
-            value = Broker.BrokerFormat.STRING,
-            config = properties,
-            runOnStartup = false
-        )
-
-        registry.registerListener(request)
         registry.startListener(topic)
 
         // Act: Send multiple messages
@@ -248,50 +226,102 @@ class EventListenerIntegrationTest {
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
-        val keySchema = AvroSchema(
-            """
-            {
-                "type": "record",
-                "name": "Key",
-                "namespace": "com.example",
-                "fields": [
-                    {"name": "id", "type": "string"}
-                ]
-            }
-        """.trimIndent()
-        )
 
-        val valueSchema = AvroSchema(
-            """
-            {
-                "type": "record",
-                "name": "Value",
-                "namespace": "com.example",
-                "fields": [
-                    {"name": "name", "type": "string"},
-                    {"name": "age", "type": "int"}
-                ]
-            }
-        """.trimIndent()
-        )
-
-        val client: CachedSchemaRegistryClient = SchemaRegistryFactory.init(
+        SchemaRegistryFactory.init(
             schemaRegistryContainer.schemaRegistryUrl,
             listOf(
-                SchemaRegistrationOperation(keySchema, topic, SchemaRegistrationOperation.SchemaType.KEY),
-                SchemaRegistrationOperation(valueSchema, topic, SchemaRegistrationOperation.SchemaType.VALUE)
+                SchemaRegistrationOperation(
+                    AvroSchema(ChangeEventData.`SCHEMA$`),
+                    topic,
+                    SchemaRegistrationOperation.SchemaType.VALUE
+                )
             )
         )
 
+        // Mock DispatchService to verify dispatchEvents call
+        val spiedDispatchService: DispatchService = spyk(dispatchService)
+        val (registry, listener) = configureEventListener(
+            spiedDispatchService,
+            topic,
+            groupId,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.AVRO
+        )
+
+        coEvery {
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+        } coAnswers {
+            latch.countDown()
+            Any()
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val template = TestKafkaProducerFactory.createKafkaTemplate(
+            kafkaContainer,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.STRING,
+            schemaRegistryContainer.schemaRegistryUrl
+        ) as KafkaTemplate<String, SpecificRecord>
+
+        assertNotNull(listener.id, "Listener ID should be set after registration")
+        registry.startListener(listener.topic)
+
+        val key: String = "test-key"
+        val payload: ChangeEventData = TestKafkaProducerFactory.mockAvroPayload()
+        template.send(listener.topic, key, payload).get()
+        // Assert: Verify message processing
+        val processed = latch.await(5, TimeUnit.SECONDS)
+        assertEquals(true, processed, "Message should be processed within 5 seconds")
+
+        // Verify dispatchService was called with correct parameters
+        coVerify(exactly = 1) {
+            spiedDispatchService.dispatchEvents(key, payload, listener)
+        }
+
+        // Cleanup
+        registry.stopListener(topic)
     }
 
     @Test
     fun `event listener should handle and deserialize json based payloads`() {
 
     }
+    
+    private fun configureEventListener(
+        service: DispatchService,
+        topic: String,
+        groupId: String,
+        key: Broker.BrokerFormat,
+        value: Broker.BrokerFormat,
+        config: AdditionalConsumerProperties? = null
+    ): Pair<EventListenerRegistry, EventListener> {
+        // Register EventListener
+        val registry = EventListenerRegistry(
+            kafkaConsumerFactory,
+            eventListenerRepository,
+            service,
+            logger
+        )
 
-    @Test
-    fun `event listener should handle combination based payloads`() {
+        val properties = config ?: AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000
+        )
+
+        val request = ListenerRegistrationRequest(
+            topic = topic,
+            groupId = groupId,
+            key = key,
+            value = value,
+            runOnStartup = false,
+            config = properties
+        )
+
+        val listener = registry.registerListener(request)
+        return Pair(registry, listener)
     }
 }
 

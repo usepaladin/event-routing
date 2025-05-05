@@ -15,12 +15,12 @@ object SchemaRegistryFactory {
 
     }
 
-    fun registerSchema(
+    private fun registerSchema(
         client: CachedSchemaRegistryClient,
         schema: AvroSchema,
         topic: String,
         type: SchemaRegistrationOperation.SchemaType
-    ): Unit {
+    ) {
         val subject = when (type) {
             SchemaRegistrationOperation.SchemaType.VALUE -> "${topic}-value"
             SchemaRegistrationOperation.SchemaType.KEY -> "${topic}-key"

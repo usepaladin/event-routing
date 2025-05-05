@@ -8,7 +8,10 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.support.serializer.JsonSerializer
 import org.testcontainers.kafka.ConfluentKafkaContainer
+import paladin.avro.database.ChangeEventData
+import paladin.avro.database.ChangeEventOperation
 import paladin.router.enums.configuration.Broker
+import java.util.*
 
 object TestKafkaProducerFactory {
     fun createKafkaTemplate(
@@ -52,4 +55,22 @@ object TestKafkaProducerFactory {
     private fun includesAvro(key: Broker.BrokerFormat, value: Broker.BrokerFormat): Boolean {
         return key == Broker.BrokerFormat.AVRO || value == Broker.BrokerFormat.AVRO
     }
+
+    fun mockAvroPayload() = ChangeEventData(
+        ChangeEventOperation.CREATE,
+        null,
+        mapOf(
+            "id" to "123",
+            "name" to "Test Name",
+            "description" to "Test Description"
+        ),
+        mapOf(
+            "id" to "123",
+            "name" to "Test Name",
+            "description" to "Test Description"
+        ),
+        Date().toInstant().epochSecond,
+        "user"
+    )
+
 }
