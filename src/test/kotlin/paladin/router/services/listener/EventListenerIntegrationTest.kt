@@ -66,8 +66,10 @@ class EventListenerIntegrationTest {
 
         // Give Kafka a consistent network alias
         private val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+            .withListener("kafka:19092")
             .withNetwork(network)
-            .withNetworkAliases("kafka")
+            .withReuse(true)
+
 
         private val schemaRegistryContainer =
             SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))
@@ -80,8 +82,8 @@ class EventListenerIntegrationTest {
             logger.info { "Kafka container started with bootstrap servers: ${kafkaContainer.bootstrapServers}" }
 
             // Register and start schema registry after Kafka is running
-            schemaRegistryContainer.registerKafkaContainer(kafkaContainer)
-            schemaRegistryContainer.start()
+            schemaRegistryContainer.withKafka(kafkaContainer).start()
+
             logger.info { "Schema Registry started with URL: ${schemaRegistryContainer.schemaRegistryUrl}" }
         }
 
@@ -286,7 +288,7 @@ class EventListenerIntegrationTest {
     fun `event listener should handle and deserialize json based payloads`() {
 
     }
-    
+
     private fun configureEventListener(
         service: DispatchService,
         topic: String,
