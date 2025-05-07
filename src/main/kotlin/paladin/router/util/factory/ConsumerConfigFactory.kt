@@ -14,8 +14,8 @@ object ConsumerConfigFactory {
         config: MutableMap<String, Any>,
         eventListener: EventListener
     ): Triple<Map<String, Any>, Deserializer<*>, Deserializer<*>> {
-        val keyDeserializer = generateDeserializer(eventListener.key)
-        val valueDeserializer = generateDeserializer(eventListener.value)
+        val keyDeserializer = generateDeserializer(eventListener.key, eventListener.config.schemaRegistryUrl)
+        val valueDeserializer = generateDeserializer(eventListener.value, eventListener.config.schemaRegistryUrl)
 
         // Configure the deserializers
         handleDeserializerConfiguration(eventListener, config, eventListener.key, true)
@@ -74,7 +74,7 @@ object ConsumerConfigFactory {
     /**
      * Creates a deserializer instance for the specified format with error handling wrapped around it
      */
-    private fun generateDeserializer(format: Broker.BrokerFormat): Deserializer<*> {
+    private fun generateDeserializer(format: Broker.BrokerFormat, schemaRegistryUrl: String? = null): Deserializer<*> {
         val baseDeserializer = when (format) {
             Broker.BrokerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
             Broker.BrokerFormat.JSON -> org.springframework.kafka.support.serializer.JsonDeserializer<Any>().apply {
@@ -82,13 +82,23 @@ object ConsumerConfigFactory {
                 this.setUseTypeHeaders(true)
             }
 
-            Broker.BrokerFormat.AVRO -> io.confluent.kafka.serializers.KafkaAvroDeserializer().apply {
-                configure(
-                    mapOf(
-                        "schema.registry.url" to "http://localhost:8081",  // Should be configurable
-                        "specific.avro.reader" to true
-                    ), false
-                )
+            Broker.BrokerFormat.AVRO -> {
+                return schemaRegistryUrl.let {
+                    if (it.isNullOrEmpty()) {
+                        throw IllegalArgumentException("Schema Registry URL is required for AVRO format")
+                    }
+
+                    io.confluent.kafka.serializers.KafkaAvroDeserializer().apply {
+                        configure(
+                            mapOf(
+                                "schema.registry.url" to "http://localhost:8081",  //todo: replace with actual URL
+                                "specific.avro.reader" to true
+                            ), false
+                        )
+                    }
+                }
+
+
             }
         }
 

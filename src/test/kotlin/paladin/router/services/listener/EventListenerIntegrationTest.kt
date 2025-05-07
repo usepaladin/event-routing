@@ -225,11 +225,11 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle and deserialize avro based payloads`() {
-        val topic = "test-topic-${UUID.randomUUID()}"
+        val topic = "test-topic"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
-        SchemaRegistryFactory.init(
+        val client = SchemaRegistryFactory.init(
             schemaRegistryContainer.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(
@@ -242,12 +242,23 @@ class EventListenerIntegrationTest {
 
         // Mock DispatchService to verify dispatchEvents call
         val spiedDispatchService: DispatchService = spyk(dispatchService)
+
+        val config = AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000,
+            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+        )
+
         val (registry, listener) = configureEventListener(
             spiedDispatchService,
             topic,
             groupId,
             Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.AVRO
+            Broker.BrokerFormat.AVRO,
+            config
         )
 
         coEvery {
@@ -261,7 +272,7 @@ class EventListenerIntegrationTest {
         val template = TestKafkaProducerFactory.createKafkaTemplate(
             kafkaContainer,
             Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.AVRO,
             schemaRegistryContainer.schemaRegistryUrl
         ) as KafkaTemplate<String, SpecificRecord>
 

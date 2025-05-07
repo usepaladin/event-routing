@@ -23,7 +23,7 @@ object TestKafkaProducerFactory {
         val keySerializerClass = fromFormat(key)
         val valueSerializerClass = fromFormat(value)
 
-        if (includesAvro(key, value) && schemaRegistryUrl != null) {
+        if (includesAvro(key, value) && schemaRegistryUrl == null) {
             throw IllegalArgumentException("Schema Registry URL must be provided when testing Avro serialization.")
         }
 
