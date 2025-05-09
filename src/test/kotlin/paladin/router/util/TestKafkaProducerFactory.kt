@@ -1,16 +1,18 @@
 package paladin.router.util
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer
+import com.fasterxml.jackson.databind.JsonNode
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.support.serializer.JsonSerializer
 import org.testcontainers.kafka.ConfluentKafkaContainer
-import paladin.avro.database.ChangeEventData
-import paladin.avro.database.ChangeEventOperation
+import paladin.avro.ChangeEventData
+import paladin.avro.ChangeEventOperation
+import paladin.avro.EventType
+import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
+import paladin.router.util.TestUtilServices.objectMapper
+import paladin.router.util.factory.SerializerFactory
 import java.util.*
 
 object TestKafkaProducerFactory {
@@ -20,12 +22,8 @@ object TestKafkaProducerFactory {
         value: Broker.BrokerFormat,
         schemaRegistryUrl: String? = null
     ): KafkaTemplate<Any, Any> {
-        val keySerializerClass = fromFormat(key)
-        val valueSerializerClass = fromFormat(value)
-
-        if (includesAvro(key, value) && schemaRegistryUrl == null) {
-            throw IllegalArgumentException("Schema Registry URL must be provided when testing Avro serialization.")
-        }
+        val keySerializerClass = SerializerFactory.fromFormat(key, !schemaRegistryUrl.isNullOrEmpty())
+        val valueSerializerClass = SerializerFactory.fromFormat(value, !schemaRegistryUrl.isNullOrEmpty())
 
         val producerProps = mutableMapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to container.bootstrapServers,
@@ -36,25 +34,20 @@ object TestKafkaProducerFactory {
             ProducerConfig.LINGER_MS_CONFIG to 1,
             ProducerConfig.BATCH_SIZE_CONFIG to 16384
         )
-        if (includesAvro(key, value)) {
-            producerProps["schema.registry.url"] = schemaRegistryUrl
-            producerProps[KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = schemaRegistryUrl
+
+        schemaRegistryUrl?.let {
+            producerProps["schema.registry.url"] = it
+            producerProps[KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = it
         }
+
         val producerFactory = DefaultKafkaProducerFactory<Any, Any>(producerProps.toMap())
         return KafkaTemplate(producerFactory)
     }
 
-    private fun fromFormat(format: Broker.BrokerFormat): String {
-        return when (format) {
-            Broker.BrokerFormat.STRING -> StringSerializer::class.java.name
-            Broker.BrokerFormat.JSON -> JsonSerializer::class.java.name
-            Broker.BrokerFormat.AVRO -> KafkaAvroSerializer::class.java.name
-        }
-    }
-
-    private fun includesAvro(key: Broker.BrokerFormat, value: Broker.BrokerFormat): Boolean {
-        return key == Broker.BrokerFormat.AVRO || value == Broker.BrokerFormat.AVRO
-    }
+    fun mockAvroKey() = MockKeyAv(
+        UUID.randomUUID().toString(),
+        EventType.CREATE
+    )
 
     fun mockAvroPayload() = ChangeEventData(
         ChangeEventOperation.CREATE,
@@ -72,5 +65,26 @@ object TestKafkaProducerFactory {
         Date().toInstant().epochSecond,
         "user"
     )
+
+    fun mockJsonKey(): JsonNode =
+        objectMapper.readTree(
+            """
+            {
+                "id": "${UUID.randomUUID()}",
+                "eventType": "${EventType.CREATE}"
+            }
+        """.trimIndent()
+        )
+
+    fun mockJsonPayload(): JsonNode =
+        objectMapper.readTree(
+            """
+            {
+                "id": "123",
+                "name": "Test Name",
+                "description": "Test Description"
+            }
+        """.trimIndent()
+        )
 
 }

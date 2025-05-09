@@ -28,7 +28,8 @@ import org.testcontainers.containers.Network
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
-import paladin.avro.database.ChangeEventData
+import paladin.avro.ChangeEventData
+import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.listener.AdditionalConsumerProperties
 import paladin.router.models.listener.EventListener
@@ -224,12 +225,89 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `event listener should handle and deserialize avro based payloads`() {
+    fun `event listener should handle and deserialize avro payloads`() {
         val topic = "test-topic"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
-        val client = SchemaRegistryFactory.init(
+        SchemaRegistryFactory.init(
+            schemaRegistryContainer.schemaRegistryUrl,
+            listOf(
+                SchemaRegistrationOperation(
+                    AvroSchema(MockKeyAv.`SCHEMA$`),
+                    topic,
+                    SchemaRegistrationOperation.SchemaType.KEY
+                ),
+                SchemaRegistrationOperation(
+                    AvroSchema(ChangeEventData.`SCHEMA$`),
+                    topic,
+                    SchemaRegistrationOperation.SchemaType.VALUE
+                )
+            )
+        )
+
+        // Mock DispatchService to verify dispatchEvents call
+        val spiedDispatchService: DispatchService = spyk(dispatchService)
+
+        val config = AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000,
+            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+        )
+
+        val (registry, listener) = configureEventListener(
+            spiedDispatchService,
+            topic,
+            groupId,
+            Broker.BrokerFormat.AVRO,
+            Broker.BrokerFormat.AVRO,
+            config
+        )
+
+        coEvery {
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+        } coAnswers {
+            latch.countDown()
+            Any()
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val template = TestKafkaProducerFactory.createKafkaTemplate(
+            kafkaContainer,
+            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.AVRO,
+            schemaRegistryContainer.schemaRegistryUrl
+        ) as KafkaTemplate<SpecificRecord, SpecificRecord>
+
+        assertNotNull(listener.id, "Listener ID should be set after registration")
+        registry.startListener(listener.topic)
+
+        val key: MockKeyAv = TestKafkaProducerFactory.mockAvroKey()
+        val payload: ChangeEventData = TestKafkaProducerFactory.mockAvroPayload()
+        template.send(listener.topic, key, payload).get()
+        // Assert: Verify message processing
+        val processed = latch.await(5, TimeUnit.SECONDS)
+        assertEquals(true, processed, "Message should be processed within 5 seconds")
+
+        // Verify dispatchService was called with correct parameters
+        coVerify(exactly = 1) {
+            spiedDispatchService.dispatchEvents(key, payload, listener)
+        }
+        
+        // Cleanup
+        registry.stopListener(topic)
+    }
+
+    @Test
+    fun `event listener should handle and deserialize combination consumers`() {
+        val topic = "test-topic"
+        val groupId = "test-group"
+        val latch = CountDownLatch(1)
+
+        SchemaRegistryFactory.init(
             schemaRegistryContainer.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(

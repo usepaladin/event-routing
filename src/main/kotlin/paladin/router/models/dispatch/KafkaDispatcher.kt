@@ -50,13 +50,13 @@ data class KafkaDispatcher(
             put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, authConfig.bootstrapServers)
             put(
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(
-                    broker.keySerializationFormat
-                        ?: Broker.BrokerFormat.STRING
+                    broker.keySerializationFormat,
+                    requiresSchemaRegistry
                 )
             )
             put(
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                SerializerFactory.fromFormat(broker.valueSerializationFormat)
+                SerializerFactory.fromFormat(broker.valueSerializationFormat, requiresSchemaRegistry)
             )
             put(ProducerConfig.ACKS_CONFIG, config.acks)
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
@@ -107,8 +107,12 @@ data class KafkaDispatcher(
         }
     }
 
+    /**
+     * Assert requirement to use Schema Registry for Avro serialisation
+     * Or if a Schema Registry URL is provided (Ie. For JSON Schemas)
+     */
     private val requiresSchemaRegistry =
-        broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
+        (broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO) || !this.authConfig.schemaRegistryUrl.isNullOrEmpty()
 
 
     /**

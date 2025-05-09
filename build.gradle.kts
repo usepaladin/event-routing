@@ -61,11 +61,12 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.16")
 
     // Service Avro Models
-    implementation("paladin.avro:avro-models:0.0.8-SNAPSHOT")
+    implementation("paladin.avro:avro-models:0.0.9-SNAPSHOT")
 
     // Avro Parsing
     implementation("org.apache.avro:avro:1.12.0")
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
+    implementation("io.confluent:kafka-json-schema-serializer:7.4.0")
 
     // Message Broker Implementations
     implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")

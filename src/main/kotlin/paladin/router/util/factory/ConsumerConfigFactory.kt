@@ -86,9 +86,24 @@ object ConsumerConfigFactory {
     ): ErrorHandlingDeserializer<*> {
         val baseDeserializer = when (format) {
             Broker.BrokerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
-            Broker.BrokerFormat.JSON -> org.springframework.kafka.support.serializer.JsonDeserializer<Any>().apply {
-                this.addTrustedPackages("*")
-                this.setUseTypeHeaders(true)
+            Broker.BrokerFormat.JSON -> {
+                schemaRegistryUrl.let {
+                    if (it.isNullOrEmpty()) {
+                        return@let org.springframework.kafka.support.serializer.JsonDeserializer<Any>().apply {
+                            this.addTrustedPackages("*")
+                            this.setUseTypeHeaders(true)
+                        }
+                    }
+                    // If schema registry URL is provided, use KafkaJsonDeserializer
+                    return@let io.confluent.kafka.serializers.KafkaJsonDeserializer<Any>().apply {
+                        configure(
+                            mapOf(
+                                "schema.registry.url" to schemaRegistryUrl,
+                                "specific.avro.reader" to true
+                            ), isKey
+                        )
+                    }
+                }
             }
 
             Broker.BrokerFormat.AVRO -> {
