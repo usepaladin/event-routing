@@ -14,7 +14,8 @@ object ConsumerConfigFactory {
         config: MutableMap<String, Any>,
         eventListener: EventListener
     ): Triple<Map<String, Any>, Deserializer<*>, Deserializer<*>> {
-        val keyDeserializer = generateDeserializer(eventListener.key, eventListener.config.schemaRegistryUrl)
+        val keyDeserializer: ErrorHandlingDeserializer<*> =
+            generateDeserializer(eventListener.key, eventListener.config.schemaRegistryUrl, true)
         val valueDeserializer = generateDeserializer(eventListener.value, eventListener.config.schemaRegistryUrl)
 
         // Configure the deserializers
@@ -40,7 +41,11 @@ object ConsumerConfigFactory {
         config[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
         config[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer
 
-        return Triple(config, keyDeserializer, valueDeserializer)
+        return Triple(
+            config,
+            keyDeserializer,
+            valueDeserializer
+        )
     }
 
     private fun handleDeserializerConfiguration(
@@ -74,7 +79,11 @@ object ConsumerConfigFactory {
     /**
      * Creates a deserializer instance for the specified format with error handling wrapped around it
      */
-    private fun generateDeserializer(format: Broker.BrokerFormat, schemaRegistryUrl: String? = null): Deserializer<*> {
+    private fun generateDeserializer(
+        format: Broker.BrokerFormat,
+        schemaRegistryUrl: String? = null,
+        isKey: Boolean = false
+    ): ErrorHandlingDeserializer<*> {
         val baseDeserializer = when (format) {
             Broker.BrokerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
             Broker.BrokerFormat.JSON -> org.springframework.kafka.support.serializer.JsonDeserializer<Any>().apply {
@@ -83,7 +92,8 @@ object ConsumerConfigFactory {
             }
 
             Broker.BrokerFormat.AVRO -> {
-                return schemaRegistryUrl.let {
+                // Check if schema registry URL is provided
+                schemaRegistryUrl.let {
                     if (it.isNullOrEmpty()) {
                         throw IllegalArgumentException("Schema Registry URL is required for AVRO format")
                     }
@@ -91,9 +101,9 @@ object ConsumerConfigFactory {
                     io.confluent.kafka.serializers.KafkaAvroDeserializer().apply {
                         configure(
                             mapOf(
-                                "schema.registry.url" to "http://localhost:8081",  //todo: replace with actual URL
+                                "schema.registry.url" to schemaRegistryUrl,  //todo: replace with actual URL
                                 "specific.avro.reader" to true
-                            ), false
+                            ), isKey
                         )
                     }
                 }
