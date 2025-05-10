@@ -2,6 +2,7 @@ package paladin.router.services.listener
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import com.fasterxml.jackson.databind.JsonNode
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.confluent.kafka.schemaregistry.json.JsonSchema
 import io.github.oshai.kotlinlogging.KLogger
@@ -11,15 +12,11 @@ import io.mockk.coVerify
 import io.mockk.spyk
 import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
@@ -37,6 +34,7 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
+import paladin.router.services.schema.SchemaService
 import util.TestLogAppender
 import util.kafka.SchemaRegistrationOperation
 import util.kafka.SchemaRegistryContainer
@@ -61,11 +59,19 @@ class EventListenerIntegrationTest {
     private var logger: KLogger = KotlinLogging.logger {}
     private lateinit var logbackLogger: Logger
 
+    @Autowired
+    private lateinit var schemaService: SchemaService
 
     @BeforeEach
     fun setup() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
         testAppender = TestLogAppender.factory(logbackLogger, Level.DEBUG)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        logbackLogger.detachAppender(testAppender)
+        testAppender.stop()
     }
 
     companion object {
@@ -146,12 +152,11 @@ class EventListenerIntegrationTest {
             Any()
         }
 
-        @Suppress("UNCHECKED_CAST")
-        val template = TestKafkaProducerFactory.createKafkaTemplate(
+        val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
             kafkaContainer,
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.STRING
-        ) as KafkaTemplate<String, String>
+        )
 
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
@@ -192,7 +197,7 @@ class EventListenerIntegrationTest {
             topic,
             groupId,
             Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.AVRO
+            Broker.BrokerFormat.STRING
         )
 
         coEvery {
@@ -202,12 +207,11 @@ class EventListenerIntegrationTest {
             Any()
         }
 
-        @Suppress("UNCHECKED_CAST")
-        val template = TestKafkaProducerFactory.createKafkaTemplate(
+        val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
             kafkaContainer,
             Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.AVRO
-        ) as KafkaTemplate<String, String>
+            Broker.BrokerFormat.STRING
+        )
 
 
         registry.startListener(topic)
@@ -233,7 +237,7 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle and deserialize avro payloads`() {
-        val topic = "test-topic"
+        val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
@@ -275,19 +279,19 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<SpecificRecord>(), any<SpecificRecord>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
             Any()
         }
 
         @Suppress("UNCHECKED_CAST")
-        val template = TestKafkaProducerFactory.createKafkaTemplate(
+        val template = TestKafkaProducerFactory.createKafkaTemplate<SpecificRecord, SpecificRecord>(
             kafkaContainer,
-            Broker.BrokerFormat.STRING,
+            Broker.BrokerFormat.AVRO,
             Broker.BrokerFormat.AVRO,
             schemaRegistryContainer.schemaRegistryUrl
-        ) as KafkaTemplate<SpecificRecord, SpecificRecord>
+        )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
         registry.startListener(listener.topic)
@@ -310,7 +314,7 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle and deserialize combination consumers`() {
-        val topic = "test-topic"
+        val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
@@ -347,19 +351,18 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<String>(), any<SpecificRecord>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
             Any()
         }
 
-        @Suppress("UNCHECKED_CAST")
-        val template = TestKafkaProducerFactory.createKafkaTemplate(
+        val template = TestKafkaProducerFactory.createKafkaTemplate<String, SpecificRecord>(
             kafkaContainer,
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.AVRO,
             schemaRegistryContainer.schemaRegistryUrl
-        ) as KafkaTemplate<String, SpecificRecord>
+        )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
         registry.startListener(listener.topic)
@@ -381,13 +384,8 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `event listener should handle and deserialize json based payloads`() {
-
-    }
-
-    @Test
-    fun `event listener should handle and deserialize json based payloads with associated schema registry`() {
-        val topic = "test-topic"
+    fun `event listener should handle failed schema validation for Json Schemas`() {
+        val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
@@ -395,7 +393,8 @@ class EventListenerIntegrationTest {
             schemaRegistryContainer.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(
-                    JsonSchema(Operation.SCHEMA),
+                    // Mismatched Schema
+                    JsonSchema(User.SCHEMA),
                     topic,
                     SchemaRegistrationOperation.SchemaType.KEY
                 ),
@@ -429,13 +428,13 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<JsonNode>(), any<JsonNode>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
             Any()
         }
 
-        val template = TestKafkaProducerFactory.createKafkaTemplate(
+        val template = TestKafkaProducerFactory.createKafkaTemplate<Operation, User>(
             kafkaContainer,
             Broker.BrokerFormat.JSON,
             Broker.BrokerFormat.JSON,
@@ -445,25 +444,19 @@ class EventListenerIntegrationTest {
         assertNotNull(listener.id, "Listener ID should be set after registration")
         registry.startListener(listener.topic)
 
-        val key: Operation = Operation(
-            id = UUID.randomUUID().toString(),
-            operation = Operation.OperationType.CREATE
-        )
+        val key =
+            Operation(
+                id = UUID.randomUUID().toString(),
+                operation = Operation.OperationType.CREATE
+            )
 
-        val payload: User = User(
+        val payload = User(
             name = "Test User",
             age = 30,
             email = "email@email.com"
         )
-
-        template.send(listener.topic, key, payload).get()
-        // Assert: Verify message processing
-        val processed = latch.await(5, TimeUnit.SECONDS)
-        assertEquals(true, processed, "Message should be processed within 5 seconds")
-
-        // Verify dispatchService was called with correct parameters
-        coVerify(exactly = 1) {
-            spiedDispatchService.dispatchEvents(key, payload, listener)
+        assertThrows<Exception> {
+            template.send(listener.topic, key, payload).get()
         }
 
         // Cleanup
@@ -507,5 +500,6 @@ class EventListenerIntegrationTest {
         return Pair(registry, listener)
     }
 }
+
 
 

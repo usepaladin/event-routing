@@ -10,8 +10,9 @@ data class Operation(val id: String, val operation: OperationType) {
     companion object {
         val SCHEMA = """
             {
-                "\${'$'}schema": "http://json-schema.org/draft-07/schema#",
+                "${'$'}schema": "http://json-schema.org/draft-07/schema#",
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
                     "id": {
                         "type": "string"
@@ -31,7 +32,8 @@ data class User(val name: String, val age: Int, val email: String? = null) {
     companion object {
         val SCHEMA = """
             {
-                "\${'$'}schema": "http://json-schema.org/draft-07/schema#",
+                "${'$'}schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": false,
                 "type": "object",
                 "properties": {
                     "name": {

@@ -18,10 +18,16 @@ object ConsumerConfigFactory {
             generateDeserializer(eventListener.key, eventListener.config.schemaRegistryUrl, true)
         val valueDeserializer = generateDeserializer(eventListener.value, eventListener.config.schemaRegistryUrl)
 
-        // Configure the deserializers
-        handleDeserializerConfiguration(eventListener, config, eventListener.key, true)
-        handleDeserializerConfiguration(eventListener, config, eventListener.value, false)
+        // Assert Schema registry exists if Avro is used, otherwise throw
+        if (eventListener.config.schemaRegistryUrl.isNullOrEmpty() && (eventListener.value == Broker.BrokerFormat.AVRO || eventListener.key == Broker.BrokerFormat.AVRO)) {
+            throw IllegalArgumentException("Schema Registry URL is required for AVRO format")
+        }
 
+        eventListener.config.schemaRegistryUrl?.let {
+            config["schema.registry.url"] = it
+            config["specific.avro.reader"] = true
+        }
+        
         applyConfigIfExist(
             config,
             listOf(
@@ -48,33 +54,6 @@ object ConsumerConfigFactory {
         )
     }
 
-    private fun handleDeserializerConfiguration(
-        eventListener: EventListener,
-        config: MutableMap<String, Any>,
-        format: Broker.BrokerFormat,
-        isKey: Boolean
-    ) {
-        when (format) {
-            Broker.BrokerFormat.JSON -> {
-                val prefix = if (isKey) "spring.json.key." else "spring.json.value."
-                config["${prefix}trusted.packages"] = "*"
-                config["${prefix}use.type.headers"] = true
-            }
-
-            Broker.BrokerFormat.AVRO -> {
-                eventListener.config.schemaRegistryUrl.let {
-                    if (it.isNullOrEmpty()) {
-                        throw IllegalArgumentException("Schema Registry URL is required for AVRO format")
-                    }
-
-                    config["schema.registry.url"] = it
-                    config["specific.avro.reader"] = true
-                }
-            }
-
-            else -> return
-        }
-    }
 
     /**
      * Creates a deserializer instance for the specified format with error handling wrapped around it
@@ -88,14 +67,9 @@ object ConsumerConfigFactory {
             Broker.BrokerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
             Broker.BrokerFormat.JSON -> {
                 schemaRegistryUrl.let {
-                    if (it.isNullOrEmpty()) {
-                        return@let org.springframework.kafka.support.serializer.JsonDeserializer<Any>().apply {
-                            this.addTrustedPackages("*")
-                            this.setUseTypeHeaders(true)
-                        }
-                    }
+                    if (it.isNullOrEmpty()) return@let io.confluent.kafka.serializers.KafkaJsonDeserializer<Any>()
                     // If schema registry URL is provided, use KafkaJsonDeserializer
-                    return@let io.confluent.kafka.serializers.KafkaJsonDeserializer<Any>().apply {
+                    return@let io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer<Any>().apply {
                         configure(
                             mapOf(
                                 "schema.registry.url" to schemaRegistryUrl,

@@ -2,8 +2,8 @@ package paladin.router.util.factory
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.confluent.kafka.serializers.KafkaJsonSerializer
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.springframework.kafka.support.serializer.JsonSerializer
 import paladin.router.enums.configuration.Broker
 
 
@@ -13,9 +13,9 @@ object SerializerFactory {
             Broker.BrokerFormat.STRING, null -> StringSerializer::class.java.name
             Broker.BrokerFormat.JSON -> {
                 if (enforceSchema) {
-                    KafkaJsonSerializer::class.java.name
+                    KafkaJsonSchemaSerializer::class.java.name
                 } else {
-                    JsonSerializer::class.java.name
+                    KafkaJsonSerializer::class.java.name
                 }
 
             }

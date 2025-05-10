@@ -1,7 +1,6 @@
 package util.kafka
 
-import com.fasterxml.jackson.databind.JsonNode
-import io.confluent.kafka.serializers.KafkaAvroSerializerConfig
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
@@ -12,20 +11,19 @@ import paladin.avro.EventType
 import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.factory.SerializerFactory
-import util.TestUtilServices.objectMapper
 import java.util.*
 
 object TestKafkaProducerFactory {
-    fun createKafkaTemplate(
+    inline fun <reified K : Any, reified V : Any> createKafkaTemplate(
         container: ConfluentKafkaContainer,
-        key: Broker.BrokerFormat,
-        value: Broker.BrokerFormat,
+        keyFormat: Broker.BrokerFormat,
+        valueFormat: Broker.BrokerFormat,
         schemaRegistryUrl: String? = null
-    ): KafkaTemplate<Any, Any> {
-        val keySerializerClass = SerializerFactory.fromFormat(key, !schemaRegistryUrl.isNullOrEmpty())
-        val valueSerializerClass = SerializerFactory.fromFormat(value, !schemaRegistryUrl.isNullOrEmpty())
+    ): KafkaTemplate<K, V> {
+        val keySerializerClass = SerializerFactory.fromFormat(keyFormat, !schemaRegistryUrl.isNullOrEmpty())
+        val valueSerializerClass = SerializerFactory.fromFormat(valueFormat, !schemaRegistryUrl.isNullOrEmpty())
 
-        val producerProps = mutableMapOf(
+        val producerProps = mutableMapOf<String, Any>(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to container.bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to keySerializerClass,
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to valueSerializerClass,
@@ -36,11 +34,11 @@ object TestKafkaProducerFactory {
         )
 
         schemaRegistryUrl?.let {
-            producerProps["schema.registry.url"] = it
-            producerProps[KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = it
+            producerProps[AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG] = it
+            producerProps[AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS] = false
         }
 
-        val producerFactory = DefaultKafkaProducerFactory<Any, Any>(producerProps.toMap())
+        val producerFactory = DefaultKafkaProducerFactory<K, V>(producerProps)
         return KafkaTemplate(producerFactory)
     }
 
@@ -65,26 +63,5 @@ object TestKafkaProducerFactory {
         Date().toInstant().epochSecond,
         "user"
     )
-
-    fun mockJsonKey(): JsonNode =
-        objectMapper.readTree(
-            """
-            {
-                "id": "${UUID.randomUUID()}",
-                "eventType": "${EventType.CREATE}"
-            }
-        """.trimIndent()
-        )
-
-    fun mockJsonPayload(): JsonNode =
-        objectMapper.readTree(
-            """
-            {
-                "id": "123",
-                "name": "Test Name",
-                "description": "Test Description"
-            }
-        """.trimIndent()
-        )
 
 }
