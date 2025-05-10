@@ -116,7 +116,7 @@ object ConsumerConfigFactory {
                     io.confluent.kafka.serializers.KafkaAvroDeserializer().apply {
                         configure(
                             mapOf(
-                                "schema.registry.url" to schemaRegistryUrl,  //todo: replace with actual URL
+                                "schema.registry.url" to schemaRegistryUrl,
                                 "specific.avro.reader" to true
                             ), isKey
                         )

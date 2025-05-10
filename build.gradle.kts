@@ -60,9 +60,6 @@ dependencies {
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
     implementation("org.slf4j:slf4j-api:2.0.16")
 
-    // Service Avro Models
-    implementation("paladin.avro:avro-models:0.0.9-SNAPSHOT")
-
     // Avro Parsing
     implementation("org.apache.avro:avro:1.12.0")
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
@@ -96,6 +93,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation("org.springframework.cloud:spring-cloud-stream-test-binder")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Mock Avro Models for Testing
+    testImplementation("paladin.schemas:models:0.0.1-SNAPSHOT")
 }
 
 dependencyManagement {

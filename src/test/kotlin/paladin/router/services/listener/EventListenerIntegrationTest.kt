@@ -3,6 +3,7 @@ package paladin.router.services.listener
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import io.confluent.kafka.schemaregistry.json.JsonSchema
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.coEvery
@@ -36,7 +37,13 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
-import paladin.router.util.*
+import util.TestLogAppender
+import util.kafka.SchemaRegistrationOperation
+import util.kafka.SchemaRegistryContainer
+import util.kafka.SchemaRegistryFactory
+import util.kafka.TestKafkaProducerFactory
+import util.mock.Operation
+import util.mock.User
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -296,7 +303,7 @@ class EventListenerIntegrationTest {
         coVerify(exactly = 1) {
             spiedDispatchService.dispatchEvents(key, payload, listener)
         }
-        
+
         // Cleanup
         registry.stopListener(topic)
     }
@@ -376,6 +383,91 @@ class EventListenerIntegrationTest {
     @Test
     fun `event listener should handle and deserialize json based payloads`() {
 
+    }
+
+    @Test
+    fun `event listener should handle and deserialize json based payloads with associated schema registry`() {
+        val topic = "test-topic"
+        val groupId = "test-group"
+        val latch = CountDownLatch(1)
+
+        SchemaRegistryFactory.init(
+            schemaRegistryContainer.schemaRegistryUrl,
+            listOf(
+                SchemaRegistrationOperation(
+                    JsonSchema(Operation.SCHEMA),
+                    topic,
+                    SchemaRegistrationOperation.SchemaType.KEY
+                ),
+                SchemaRegistrationOperation(
+                    JsonSchema(User.SCHEMA),
+                    topic,
+                    SchemaRegistrationOperation.SchemaType.VALUE
+                )
+            )
+        )
+
+        // Mock DispatchService to verify dispatchEvents call
+        val spiedDispatchService: DispatchService = spyk(dispatchService)
+
+        val config = AdditionalConsumerProperties(
+            autoOffsetReset = "earliest",
+            enableAutoCommit = true,
+            maxPollRecords = 10,
+            maxPollIntervalMs = 300000,
+            sessionTimeoutMs = 10000,
+            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+        )
+
+        val (registry, listener) = configureEventListener(
+            spiedDispatchService,
+            topic,
+            groupId,
+            Broker.BrokerFormat.JSON,
+            Broker.BrokerFormat.JSON,
+            config
+        )
+
+        coEvery {
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+        } coAnswers {
+            latch.countDown()
+            Any()
+        }
+
+        val template = TestKafkaProducerFactory.createKafkaTemplate(
+            kafkaContainer,
+            Broker.BrokerFormat.JSON,
+            Broker.BrokerFormat.JSON,
+            schemaRegistryContainer.schemaRegistryUrl
+        )
+
+        assertNotNull(listener.id, "Listener ID should be set after registration")
+        registry.startListener(listener.topic)
+
+        val key: Operation = Operation(
+            id = UUID.randomUUID().toString(),
+            operation = Operation.OperationType.CREATE
+        )
+
+        val payload: User = User(
+            name = "Test User",
+            age = 30,
+            email = "email@email.com"
+        )
+
+        template.send(listener.topic, key, payload).get()
+        // Assert: Verify message processing
+        val processed = latch.await(5, TimeUnit.SECONDS)
+        assertEquals(true, processed, "Message should be processed within 5 seconds")
+
+        // Verify dispatchService was called with correct parameters
+        coVerify(exactly = 1) {
+            spiedDispatchService.dispatchEvents(key, payload, listener)
+        }
+
+        // Cleanup
+        registry.stopListener(topic)
     }
 
     private fun configureEventListener(

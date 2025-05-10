@@ -1,4 +1,4 @@
-package paladin.router.util
+package util.kafka
 
 import com.fasterxml.jackson.databind.JsonNode
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig
@@ -11,8 +11,8 @@ import paladin.avro.ChangeEventOperation
 import paladin.avro.EventType
 import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
-import paladin.router.util.TestUtilServices.objectMapper
 import paladin.router.util.factory.SerializerFactory
+import util.TestUtilServices.objectMapper
 import java.util.*
 
 object TestKafkaProducerFactory {

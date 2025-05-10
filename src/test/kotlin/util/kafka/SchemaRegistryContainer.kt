@@ -1,4 +1,4 @@
-package paladin.router.util
+package util.kafka
 
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait

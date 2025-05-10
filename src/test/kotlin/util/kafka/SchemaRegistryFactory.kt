@@ -1,6 +1,6 @@
-package paladin.router.util
+package util.kafka
 
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 
 object SchemaRegistryFactory {
@@ -17,7 +17,7 @@ object SchemaRegistryFactory {
 
     private fun registerSchema(
         client: CachedSchemaRegistryClient,
-        schema: AvroSchema,
+        schema: ParsedSchema,
         topic: String,
         type: SchemaRegistrationOperation.SchemaType
     ) {
@@ -30,7 +30,7 @@ object SchemaRegistryFactory {
 }
 
 data class SchemaRegistrationOperation(
-    val schema: AvroSchema,
+    val schema: ParsedSchema,
     val topic: String,
     val type: SchemaType
 ) {

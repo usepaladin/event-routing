@@ -1,4 +1,4 @@
-package paladin.router.util
+package util
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 
-object TestUtilServices{
+object TestUtilServices {
     private fun mapperInit(): ObjectMapper {
         val dateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
