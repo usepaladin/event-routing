@@ -9,10 +9,9 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
 import paladin.router.repository.MessageBrokerRepository
 import paladin.router.services.dispatch.DispatchService
-import paladin.router.services.dispatch.DispatchServiceTest
 import paladin.router.services.encryption.EncryptionService
-import paladin.router.util.TestUtilServices
 import paladin.router.util.factory.MessageDispatcherFactory
+import util.TestUtilServices
 
 @ExtendWith(MockKExtension::class)
 class BrokersServiceTest {
@@ -42,7 +41,15 @@ class BrokersServiceTest {
 
     @BeforeEach
     fun setUp() {
-        brokerService = BrokerService(repository, dispatchService, encryptionService, logger,
-            serviceEncryptionConfig, kafkaListenerEndpointRegistry, messageDispatchServiceTest, TestUtilServices.objectMapper)
+        brokerService = BrokerService(
+            repository,
+            dispatchService,
+            encryptionService,
+            logger,
+            serviceEncryptionConfig,
+            kafkaListenerEndpointRegistry,
+            messageDispatchServiceTest,
+            TestUtilServices.objectMapper
+        )
     }
 }

@@ -10,8 +10,7 @@ import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker.BrokerType
 import paladin.router.enums.configuration.Broker.BrokerFormat
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
 import java.time.ZonedDateTime
 import java.util.*
 

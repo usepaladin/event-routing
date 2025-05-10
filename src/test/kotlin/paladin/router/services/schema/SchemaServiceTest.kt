@@ -5,36 +5,35 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-
 import org.apache.avro.generic.GenericRecord
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
-import paladin.avro.database.ChangeEventData
-import paladin.avro.database.ChangeEventOperation
-import paladin.router.util.TestUtilServices
-import paladin.router.util.User
-import java.util.Date
+import paladin.avro.ChangeEventData
+import paladin.avro.ChangeEventOperation
+import util.TestUtilServices
+import util.mock.User
+import java.util.*
 
 
 @ExtendWith(MockKExtension::class)
 class SchemaServiceTest {
 
-        @MockK
-        private lateinit var logger: KLogger
+    @MockK
+    private lateinit var logger: KLogger
 
-        private lateinit var schemaService: SchemaService
-        private val objectMapper = ObjectMapper()
+    private lateinit var schemaService: SchemaService
+    private val objectMapper = ObjectMapper()
 
-        @BeforeEach
-        fun setUp() {
-            schemaService = SchemaService(TestUtilServices.objectMapper, logger)
-        }
+    @BeforeEach
+    fun setUp() {
+        schemaService = SchemaService(TestUtilServices.objectMapper, logger)
+    }
 
-        private val avroSchemaString =
-            """
+    private val avroSchemaString =
+        """
         {
           "type": "record",
           "name": "User",
@@ -57,28 +56,28 @@ class SchemaServiceTest {
         }
     """.trimIndent()
 
-        @Test
-        fun `encodeToAvro should convert Kotlin object to GenericRecord`() {
-            val user = User(name = "Alice", age = 30)
+    @Test
+    fun `encodeToAvro should convert Kotlin object to GenericRecord`() {
+        val user = User(name = "Alice", age = 30)
 
-            val record: GenericRecord = schemaService.parseToAvro(avroSchemaString, user)
-            assertEquals("Alice", record["name"].toString())
-            assertEquals(30, record["age"])
-        }
-
-        @Test
-        fun `encodeToAvro should log and throw exception on invalid schema`() {
-            val invalidSchema = """{ "type": "record", "name": "Bad" }""" // no fields, will throw
-
-            val user = User("Bob", 25)
-
-            assertThrows<Exception> {
-                schemaService.parseToAvro(invalidSchema, user)
-            }
-        }
+        val record: GenericRecord = schemaService.parseToAvro(avroSchemaString, user)
+        assertEquals("Alice", record["name"].toString())
+        assertEquals(30, record["age"])
+    }
 
     @Test
-    fun `handle avro encoding from another avro object`(){
+    fun `encodeToAvro should log and throw exception on invalid schema`() {
+        val invalidSchema = """{ "type": "record", "name": "Bad" }""" // no fields, will throw
+
+        val user = User("Bob", 25)
+
+        assertThrows<Exception> {
+            schemaService.parseToAvro(invalidSchema, user)
+        }
+    }
+
+    @Test
+    fun `handle avro encoding from another avro object`() {
         val schema = """
               {
                     "type": "record",
@@ -185,6 +184,6 @@ class SchemaServiceTest {
         assertEquals(50, parsed["age"].asInt())
         assertEquals("charlie@example.com", parsed["email"].asText())
     }
-    }
+}
 
 

@@ -1,0 +1,40 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.9 Chrome/128.0.6613.186 Electron/32.2.5 Safari/537.36" version="26.0.9">
+  <diagram name="Page-1" id="OdXSMNV4L8bMfVPCa8dA">
+    <mxGraphModel dx="3754" dy="814" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-1" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-430" y="510" width="370" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-2" value="Listener Registry" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=36;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="-337.5" y="530" width="185" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-4" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-200" y="730" width="125" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-5" value="Event Listener" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=0" vertex="1" parent="1">
+          <mxGeometry x="-195" y="735" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-6" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-337.5" y="730" width="125" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-7" value="Event Listener" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=0" vertex="1" parent="1">
+          <mxGeometry x="-332.5" y="735" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-8" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-337.5" y="670" width="125" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-9" value="Event Listener" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=0" vertex="1" parent="1">
+          <mxGeometry x="-332.5" y="675" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-10" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-200" y="670" width="125" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="jEhc6L0VSmhBpTyuSgvg-11" value="Event Listener" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=0" vertex="1" parent="1">
+          <mxGeometry x="-195" y="675" width="120" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

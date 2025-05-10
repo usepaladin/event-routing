@@ -2,14 +2,14 @@ package paladin.router.util.factory
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.enums.configuration.SQS.Region
-import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.pojo.configuration.brokers.auth.RabbitEncryptedConfig
-import paladin.router.pojo.configuration.brokers.auth.SQSEncryptedConfig
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
-import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
-import paladin.router.pojo.configuration.brokers.core.RabbitBrokerConfig
-import paladin.router.pojo.configuration.brokers.core.SQSBrokerConfig
+import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
+import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
+import paladin.router.models.configuration.brokers.core.RabbitBrokerConfig
+import paladin.router.models.configuration.brokers.core.SQSBrokerConfig
 
 
 object BrokerConfigFactory {

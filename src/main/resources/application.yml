@@ -1,5 +1,3 @@
-router:
-  tenant-id: ${TENANT_ID:}
 spring:
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
@@ -17,19 +15,20 @@ spring:
           timeout: 30000
   application:
     name: event-router${TENANT_ID:}
-  kafka:
-    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
-    listener:
-      type: single
-      concurrency: 3
-    consumer:
-      group-id: event-router-tenant-${TENANT_ID:}
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
-      properties:
-        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
-        specific.avro.reader: true
+#
+#  kafka:
+#    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+#    listener:
+#      type: single
+#      concurrency: 3
+#    consumer:
+#      group-id: event-router-tenant-${TENANT_ID:}
+#      auto-offset-reset: earliest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+#      properties:
+#        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+#        specific.avro.reader: true
 encryption:
   require-data-encryption: true
   key: ${ENCRYPTION_KEY:}

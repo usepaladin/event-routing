@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.every
@@ -15,10 +14,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
-import paladin.router.util.TestLogAppender
-import paladin.router.util.TestUtilServices
-import paladin.router.util.User
-import java.util.Base64
+import util.TestLogAppender
+import util.TestUtilServices
+import util.mock.User
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -38,10 +37,10 @@ class EncryptionServiceTest {
 
 
     @BeforeEach
-    fun setUp(){
+    fun setUp() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
         testAppender = TestLogAppender.factory(logbackLogger, Level.DEBUG)
-        every { encryptionConfigurationProperties.key } returns Base64.getEncoder().encodeToString(ByteArray(16){1})
+        every { encryptionConfigurationProperties.key } returns Base64.getEncoder().encodeToString(ByteArray(16) { 1 })
         encryptionService = EncryptionService(encryptionConfigurationProperties, TestUtilServices.objectMapper, logger)
 
     }
@@ -94,7 +93,7 @@ class EncryptionServiceTest {
         val invalidBase64 = "!!not_base64!!"
         val result = encryptionService.decrypt(invalidBase64)
         assertTrue {
-            testAppender.logs.any{
+            testAppender.logs.any {
                 it.level == Level.ERROR
             }
         }

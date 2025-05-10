@@ -58,7 +58,7 @@ class EncryptionService(
      * @return Base64 encoded ciphertext (including IV prepended) or null in case of error
      */
     fun encrypt(data: String): String? {
-        if(encryptionKeyBase64 == null){
+        if (encryptionKeyBase64 == null) {
             logger.error { "Encryption key is not set" }
             throw IllegalStateException("Encryption key is not set")
         }
@@ -101,7 +101,7 @@ class EncryptionService(
      * @return Decrypted plaintext String or null if decryption fails
      */
     fun decrypt(ciphertextBase64: String): String? {
-        if(encryptionKeyBase64 == null){
+        if (encryptionKeyBase64 == null) {
             logger.error { "Encryption key is not set" }
             throw IllegalStateException("Encryption key is not set")
         }
@@ -133,16 +133,16 @@ class EncryptionService(
         }.getOrNull()
     }
 
-    private fun getSpecificDecryptionError(ex: Throwable): String{
+    private fun getSpecificDecryptionError(ex: Throwable): String {
         return when (ex) {
-            is NoSuchAlgorithmException ->  "Decryption algorithm not found"
-            is AEADBadTagException ->  "Authentication tag mismatch (ciphertext integrity compromised or incorrect key)"
+            is NoSuchAlgorithmException -> "Decryption algorithm not found"
+            is AEADBadTagException -> "Authentication tag mismatch (ciphertext integrity compromised or incorrect key)"
             is NoSuchPaddingException -> "Padding exception during decryption"
-            is IllegalBlockSizeException ->  "Illegal block size during decryption"
-            is BadPaddingException ->  "Bad padding during decryption (possibly incorrect key or corrupted ciphertext)"
-            is InvalidKeyException ->  "Invalid decryption key"
-            is InvalidAlgorithmParameterException ->  "Invalid algorithm parameters during decryption"
-            is IllegalArgumentException ->  "Illegal argument provided during decryption"
+            is IllegalBlockSizeException -> "Illegal block size during decryption"
+            is BadPaddingException -> "Bad padding during decryption (possibly incorrect key or corrupted ciphertext)"
+            is InvalidKeyException -> "Invalid decryption key"
+            is InvalidAlgorithmParameterException -> "Invalid algorithm parameters during decryption"
+            is IllegalArgumentException -> "Illegal argument provided during decryption"
             else -> "Cause => Unknown"
         }
     }

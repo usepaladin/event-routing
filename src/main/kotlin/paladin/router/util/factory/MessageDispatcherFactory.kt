@@ -1,20 +1,29 @@
 package paladin.router.util.factory
 
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
+import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
+import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
+import paladin.router.models.configuration.brokers.core.RabbitBrokerConfig
+import paladin.router.models.configuration.brokers.core.SQSBrokerConfig
 import paladin.router.models.dispatch.*
-import paladin.router.pojo.configuration.brokers.auth.*
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
-import paladin.router.pojo.configuration.brokers.core.*
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.schema.SchemaService
 
-@Service
+@Component
 class MessageDispatcherFactory(private val schemaService: SchemaService) {
-    fun fromBrokerConfig(broker: MessageBroker, config: BrokerConfig, authConfig: EncryptedBrokerConfig): MessageDispatcher{
-        return when{
+    fun fromBrokerConfig(
+        broker: MessageBroker,
+        config: BrokerConfig,
+        authConfig: EncryptedBrokerConfig
+    ): MessageDispatcher {
+        return when {
             config is KafkaBrokerConfig && authConfig is KafkaEncryptedConfig -> {
-                KafkaDispatcher<Any, Any>(
+                KafkaDispatcher(
                     broker = broker,
                     config = config,
                     authConfig = authConfig,
