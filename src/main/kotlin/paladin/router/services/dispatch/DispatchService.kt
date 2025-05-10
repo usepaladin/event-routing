@@ -24,8 +24,9 @@ class DispatchService(
     @Qualifier("coroutineDispatcher") private val dispatcher: CoroutineDispatcher
 ) : CoroutineScope {
     private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
+    val job = SupervisorJob()
     override val coroutineContext: CoroutineContext
-        get() = dispatcher + SupervisorJob()
+        get() = dispatcher + job
 
     fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) {
         launch {
@@ -41,7 +42,7 @@ class DispatchService(
                         dispatchToBroker(key, value, topic, dispatcher)
                     } catch (e: Exception) {
                         logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${dispatcher.broker.brokerType} - ${dispatcher.broker.brokerName} => Message: ${e.message}" }
-                        // Send to DLQ For manual handling
+                        // Todo: Handle DLQ logic here
                     }
                 }
             }.awaitAll()

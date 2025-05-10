@@ -149,7 +149,6 @@ class EventListenerIntegrationTest {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Any()
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
@@ -204,7 +203,6 @@ class EventListenerIntegrationTest {
             spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Any()
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
@@ -282,7 +280,6 @@ class EventListenerIntegrationTest {
             spiedDispatchService.dispatchEvents(any<SpecificRecord>(), any<SpecificRecord>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Any()
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -354,7 +351,6 @@ class EventListenerIntegrationTest {
             spiedDispatchService.dispatchEvents(any<String>(), any<SpecificRecord>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Any()
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, SpecificRecord>(
@@ -431,7 +427,6 @@ class EventListenerIntegrationTest {
             spiedDispatchService.dispatchEvents(any<JsonNode>(), any<JsonNode>(), any<EventListener>())
         } coAnswers {
             latch.countDown()
-            Any()
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<Operation, User>(

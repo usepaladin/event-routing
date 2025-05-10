@@ -22,8 +22,7 @@ data class KafkaDispatcher(
     override val schemaService: SchemaService
 ) : MessageDispatcher() {
     private var producer: KafkaProducer<Any, Any>? = null
-    override val logger: KLogger
-        get() = KotlinLogging.logger { }
+    override val logger: KLogger = KotlinLogging.logger {}
 
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         if (producer == null) {
