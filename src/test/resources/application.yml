@@ -1,0 +1,25 @@
+encryption:
+  key: ${ENCRYPTION_KEY:default-key}
+  require-data-encryption: true
+spring:
+  sql:
+    init:
+      mode: always
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+      group-id: event-router
+  datasource:
+    url: jdbc:tc:postgresql:15://localhost/testdb
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  test:
+    database:
+      replace: none

@@ -1,43 +1,38 @@
 package paladin.router.models.dispatch
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringSerializer
-
-import org.springframework.kafka.support.serializer.JsonSerializer
-
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.pojo.configuration.brokers.core.KafkaBrokerConfig
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
 import paladin.router.services.schema.SchemaService
-import java.util.Properties
+import paladin.router.util.factory.SerializerFactory
+import java.util.*
 
 
-data class KafkaDispatcher <T, P>(
+data class KafkaDispatcher(
     override val broker: MessageBroker,
     override val config: KafkaBrokerConfig,
     override val authConfig: KafkaEncryptedConfig,
     override val schemaService: SchemaService
-): MessageDispatcher()  {
-    private var producer: KafkaProducer<T,P>? = null
-    override val logger: KLogger
-        get() = KotlinLogging.logger {  }
+) : MessageDispatcher() {
+    private var producer: KafkaProducer<Any, Any>? = null
+    override val logger: KLogger = KotlinLogging.logger {}
 
-    override fun <K, V> dispatch(topic: String, key: K, payload: V, keySchema: String?, payloadSchema: String?) {
-        if(producer == null){
+    override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
+        if (producer == null) {
             logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
-            return;
+            return
         }
 
-        val (parsedKey: T, parsedPayload: P) = parseMessageValues(key, payload, keySchema, payloadSchema)
-        val record: ProducerRecord<T,P> = ProducerRecord(topic, parsedKey, parsedPayload)
+        val dispatchKey = convertToFormat(key, topic.key, topic.keySchema)
+        val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
+        val record: ProducerRecord<Any, Any> = ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
         try {
             producer?.send(record)?.get()
             logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
@@ -47,25 +42,28 @@ data class KafkaDispatcher <T, P>(
 
     }
 
-    override fun <V> dispatch(topic: String, payload: V, payloadSchema: String?) {
-        throw UnsupportedOperationException("Kafka does not support dispatching without a key")
-    }
-
     override fun build() {
         this.updateConnectionState(MessageDispatcherState.Building)
         val properties = Properties()
         properties.apply {
             put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, authConfig.bootstrapServers)
-            put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.keySerializationFormat
-                ?: Broker.BrokerFormat.STRING))
-            put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, getSerializerClass(broker.valueSerializationFormat))
+            put(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(
+                    broker.keySerializationFormat,
+                    requiresSchemaRegistry
+                )
+            )
+            put(
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                SerializerFactory.fromFormat(broker.valueSerializationFormat, requiresSchemaRegistry)
+            )
             put(ProducerConfig.ACKS_CONFIG, config.acks)
             put(ProducerConfig.RETRIES_CONFIG, config.retries)
             put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, config.requestTimeoutMs)
         }
 
         properties.apply {
-            if(requiresSchemaRegistry){
+            if (requiresSchemaRegistry) {
                 put("schema.registry.url", authConfig.schemaRegistryUrl)
                 put("specific.avro.reader", true)
                 return@apply
@@ -103,64 +101,46 @@ data class KafkaDispatcher <T, P>(
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Request timeout must be greater than 0")
         }
 
-        if( this.requiresSchemaRegistry && authConfig.schemaRegistryUrl.isNullOrEmpty()){
+        if (this.requiresSchemaRegistry && authConfig.schemaRegistryUrl.isNullOrEmpty()) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${broker.brokerName} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
 
+    /**
+     * Assert requirement to use Schema Registry for Avro serialisation
+     * Or if a Schema Registry URL is provided (Ie. For JSON Schemas)
+     */
     private val requiresSchemaRegistry =
-         broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO
+        (broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO) || !this.authConfig.schemaRegistryUrl.isNullOrEmpty()
+
 
     /**
-     * Converts the key and value to the appropriate type based on the broker configuration.
+     * Converts a payload to the appropriate format based on the topic's serialisation technique
      * Also utilises any provided schema to parse the message (When using Json or Avro)
      *
-     * @param key The key of the message
-     * @param value The value of the message
+     * @param payload The value being transformed
+     * @param format The format of the payload
+     * @param schema Any associated schema to validate and transform the payload into a specific format
      *
-     * @return A pair of the parsed key and value
+     * @return A transformed value
      */
-    private fun <K, V> parseMessageValues(key: K, value: V, keySchema: String? = null, payloadSchema: String? = null): Pair<T,P> {
-        val parsedKey = convertToFormat(key, broker.keySerializationFormat ?: Broker.BrokerFormat.STRING, keySchema)
-        val parsedValue = convertToFormat(value, broker.valueSerializationFormat, payloadSchema)
-
-        if (parsedKey !is String && parsedKey !is ByteArray) {
-            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Key is not of type String or ByteArray" }
-        }
-
-        if (parsedValue !is String && parsedValue !is ByteArray) {
-            logger.warn { "Kafka Broker => Broker name: ${broker.brokerName} => Value is not of type String or ByteArray" }
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        return Pair(parsedKey as T, parsedValue as P)
-    }
-
-    private fun <T> convertToFormat(value: T, format: Broker.BrokerFormat, schema: String?): Any {
-        return when(format){
-            Broker.BrokerFormat.STRING -> schemaService.parseToString(value)
+    private fun <T> convertToFormat(payload: T, format: Broker.BrokerFormat, schema: String?): Any {
+        return when (format) {
+            Broker.BrokerFormat.STRING -> schemaService.parseToString(payload)
             Broker.BrokerFormat.JSON -> {
-                if(schema == null) {
-                    return schemaService.parseToJson(value)
+                if (schema == null) {
+                    return schemaService.parseToJson(payload)
 
                 }
-                return schemaService.parseToJson(schema, value)
+                return schemaService.parseToJson(schema, payload)
             }
+
             Broker.BrokerFormat.AVRO -> {
-                if(schema == null) {
+                if (schema == null) {
                     throw IllegalArgumentException("Schema cannot be null for Avro format")
                 }
-                return schemaService.parseToAvro(schema, value)
+                return schemaService.parseToAvro(schema, payload)
             }
         }
     }
-
-    private fun getSerializerClass(brokerFormat: Broker.BrokerFormat): String{
-        return when(brokerFormat){
-            Broker.BrokerFormat.STRING -> StringSerializer::class.java.name
-            Broker.BrokerFormat.JSON -> JsonSerializer::class.java.name
-            Broker.BrokerFormat.AVRO -> KafkaAvroSerializer::class.java.name
-        }
-    }
-
 }

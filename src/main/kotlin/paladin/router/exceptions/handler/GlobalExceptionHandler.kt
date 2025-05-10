@@ -4,10 +4,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
-import paladin.router.exceptions.BrokerNotFoundException
-import paladin.router.exceptions.InvalidArgumentException
-import paladin.router.exceptions.UnauthorizedException
-import paladin.router.pojo.exceptions.ErrorResponse
+import paladin.router.exceptions.*
+import paladin.router.models.exceptions.ErrorResponse
 import java.io.PrintWriter
 import java.io.StringWriter
 
@@ -43,4 +41,15 @@ class GlobalExceptionHandler {
     fun handleBrokerNotFoundException(ex: BrokerNotFoundException): ResponseEntity<ErrorResponse> {
         return handleException(ex, HttpStatus.NOT_FOUND, true)
     }
+
+    @ExceptionHandler(ActiveListenerException::class)
+    fun handleActiveListenerException(ex: ActiveListenerException): ResponseEntity<ErrorResponse> {
+        return handleException(ex, HttpStatus.FORBIDDEN, true)
+    }
+
+    @ExceptionHandler(ListenerNotFoundException::class)
+    fun handleListenerNotFoundException(ex: ListenerNotFoundException): ResponseEntity<ErrorResponse> {
+        return handleException(ex, HttpStatus.NOT_FOUND, true)
+    }
+
 }

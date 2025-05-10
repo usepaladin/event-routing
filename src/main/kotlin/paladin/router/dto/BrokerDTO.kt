@@ -1,8 +1,8 @@
 package paladin.router.dto
 
 import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.pojo.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.pojo.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.core.BrokerConfig
 
 open class BrokerDTO(
     val broker: MessageBroker,

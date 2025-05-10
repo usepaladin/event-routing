@@ -1,6 +1,6 @@
 package paladin.router.dto
 
-import paladin.router.pojo.dispatch.MessageDispatcher
+import paladin.router.models.dispatch.MessageDispatcher
 
 data class MessageDispatchDTO(
     val broker: BrokerDTO,
