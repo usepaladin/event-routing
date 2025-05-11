@@ -1,45 +1,51 @@
 package util.kafka
 
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.NewTopic
+import org.springframework.test.context.DynamicPropertyRegistry
 import org.testcontainers.containers.Network
 import org.testcontainers.kafka.ConfluentKafkaContainer
+import org.testcontainers.utility.DockerImageName
+import util.KafkaCluster
+import java.util.*
 
 class KafkaTestClusterManager {
     // Store cluster configurations
-    private val clusters = mutableMapOf<String, ClusterConfig>()
-
-    data class ClusterConfig(
-        val network: Network,
-        val kafkaContainer: ConfluentKafkaContainer,
-        val schemaRegistryContainer: SchemaRegistryContainer,
-        val adminClient: AdminClient,
-        val schemaRegistryClient: SchemaRegistryClient,
-        val topics: MutableList<String> = mutableListOf()
-    )
+    private val clusters = mutableMapOf<String, KafkaCluster>()
 
     // Initialize a new Kafka cluster with Schema Registry
-    fun initializeCluster(clusterId: String): ClusterConfig {
-        if (clusters.containsKey(clusterId)) {
-            throw IllegalStateException("Kafka Cluster $clusterId already initialized")
+    fun init(id: String, includeSchemaRegistry: Boolean = true): KafkaCluster {
+        if (clusters.containsKey(id)) {
+            throw IllegalStateException("Kafka Cluster $id already initialized")
         }
 
         // Create a network for Kafka and Schema Registry
         val network = Network.newNetwork()
 
         // Start Kafka container
-        val kafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"))
+        val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
             .withNetwork(network)
             .withNetworkAliases("kafka")
+            .withReuse(true)
             .apply { start() }
 
-        // Start Schema Registry container
-        val schemaRegistryContainer = GenericContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.5.0"))
-            .withNetwork(network)
-            .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
-            .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "kafka:9092")
-            .withExposedPorts(8081)
-            .apply { start() }
+        val schemaRegistry: Pair<SchemaRegistryContainer, SchemaRegistryClient?>? = includeSchemaRegistry.let {
+            if (!it) return@let null
+
+            val container = SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))
+                .withNetwork(network)
+                .withNetworkAliases("schema-registry")
+                .withReuse(true)
+                .apply {
+                    withKafka(kafkaContainer)
+                    start()
+                }
+
+            val client = CachedSchemaRegistryClient(container.schemaRegistryUrl, 100)
+            container to client
+        }
 
         // Create AdminClient for topic management
         val adminProps = Properties().apply {
@@ -47,39 +53,46 @@ class KafkaTestClusterManager {
         }
         val adminClient = AdminClient.create(adminProps)
 
-        // Create SchemaRegistryClient
-        val schemaRegistryUrl = "http://${schemaRegistryContainer.host}:${schemaRegistryContainer.getMappedPort(8081)}"
-        val schemaRegistryClient = CachedSchemaRegistryClient(schemaRegistryUrl, 100)
-
-        val config = ClusterConfig(network, kafkaContainer, schemaRegistryContainer, adminClient, schemaRegistryClient)
-        clusters[clusterId] = config
-        return config
+        return KafkaCluster(
+            network,
+            schemaRegistryContainer = schemaRegistry?.first,
+            schemaRegistryClient = schemaRegistry?.second,
+            container = kafkaContainer,
+            client = adminClient,
+            topics = mutableListOf()
+        )
     }
 
     // Register Spring properties for a specific cluster
     fun registerProperties(
-        clusterId: String,
+        id: String,
         registry: DynamicPropertyRegistry,
-        propertyPrefix: String = "spring.kafka.clusters.$clusterId"
+        propertyPrefix: String = "spring.kafka.clusters.$id"
     ) {
-        val config = clusters[clusterId] ?: throw IllegalStateException("Kafka Cluster $clusterId not initialized")
-        registry.add("$propertyPrefix.bootstrap-servers") { config.kafkaContainer.bootstrapServers }
-        registry.add("$propertyPrefix.schema-registry-url") {
-            "http://${config.schemaRegistryContainer.host}:${config.schemaRegistryContainer.getMappedPort(8081)}"
+        val config = clusters[id] ?: throw IllegalStateException("Kafka Cluster $id not initialized")
+        registry.add("$propertyPrefix.bootstrap-servers") { config.container.bootstrapServers }
+        config.schemaRegistryContainer?.let {
+            registry.add("$propertyPrefix.schema-registry-url") {
+                it.schemaRegistryUrl
+            }
+        } ?: run {
+            registry.add("$propertyPrefix.schema-registry-url") { null }
         }
     }
 
     // Create a topic in the specified cluster
-    fun createTopic(clusterId: String, topicName: String, partitions: Int = 1, replicationFactor: Short = 1) {
-        val config = clusters[clusterId] ?: throw IllegalStateException("Kafka Cluster $clusterId not initialized")
+    fun createTopic(id: String, topicName: String, partitions: Int = 1, replicationFactor: Short = 1) {
+        val config = clusters[id] ?: throw IllegalStateException("Kafka Cluster $id not initialized")
         val newTopic = NewTopic(topicName, partitions, replicationFactor)
-        config.adminClient.createTopics(listOf(newTopic)).all().get()
-        config.topics.add(topicName)
+        config.run {
+            client.createTopics(listOf(newTopic)).all().get()
+            topics.add(newTopic)
+        }
     }
 
     // Get the AdminClient for a specific cluster
     fun getAdminClient(clusterId: String): AdminClient {
-        return clusters[clusterId]?.adminClient
+        return clusters[clusterId]?.client
             ?: throw IllegalStateException("Kafka Cluster $clusterId not initialized")
     }
 
@@ -90,16 +103,16 @@ class KafkaTestClusterManager {
     }
 
     // Clean up a specific cluster
-    fun cleanupCluster(clusterId: String) {
-        val config = clusters.remove(clusterId) ?: return
-        config.adminClient.close()
-        config.schemaRegistryContainer.stop()
-        config.kafkaContainer.stop()
+    private fun cleanup(id: String) {
+        val config = clusters.remove(id) ?: return
+        config.client.close()
+        config.schemaRegistryContainer?.stop()
+        config.container.stop()
         config.network.close()
     }
 
     // Clean up all clusters
     fun cleanupAll() {
-        clusters.keys.toList().forEach { cleanupCluster(it) }
+        clusters.keys.toList().forEach { cleanup(it) }
     }
 }
