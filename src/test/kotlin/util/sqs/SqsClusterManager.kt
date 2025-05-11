@@ -1,15 +1,35 @@
 package util.sqs
 
 import org.springframework.test.context.DynamicPropertyRegistry
+import org.testcontainers.containers.localstack.LocalStackContainer
+import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest
 import software.amazon.awssdk.services.sqs.model.DeleteQueueRequest
+import util.MessageBrokerCluster
 
 class SqsClusterManager {
 
-    private val clusters = mutableMapOf<String, SqsCluster>()
+    private val clusters = mutableMapOf<String, MessageBrokerCluster<LocalStackContainer, SqsClient>>()
 
-    fun initCluster(id: String): SqsCluster {}
+    fun initCluster(id: String): MessageBrokerCluster<LocalStackContainer, SqsClient> {
+        if (clusters.containsKey(id)) {
+            throw IllegalStateException("SQS Cluster $id already initialized")
+        }
+
+        val container = LocalStackContainer(DockerImageName.parse("localstack/localstack:3.8.1"))
+            .withServices(LocalStackContainer.Service.SQS)
+            .apply { start() }
+
+        val sqsClient = SqsClient.builder()
+            .endpointOverride(container.endpoint)
+            .build()
+
+        return MessageBrokerCluster(container, sqsClient).also {
+            clusters[id] = it
+        }
+
+    }
 
     // Register Spring properties for a specific cluster
     fun registerProperties(
@@ -55,6 +75,6 @@ class SqsClusterManager {
 
     // Clean up all clusters
     fun cleanupAll() {
-        clusters.keys.toList().forEach { cleanupCluster(it) }
+        clusters.keys.toList().forEach { cleanup(it) }
     }
 }
