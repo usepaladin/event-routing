@@ -41,27 +41,5 @@ object TestKafkaProducerFactory {
         val producerFactory = DefaultKafkaProducerFactory<K, V>(producerProps)
         return KafkaTemplate(producerFactory)
     }
-
-    fun mockAvroKey() = MockKeyAv(
-        UUID.randomUUID().toString(),
-        EventType.CREATE
-    )
-
-    fun mockAvroPayload() = ChangeEventData(
-        ChangeEventOperation.CREATE,
-        null,
-        mapOf(
-            "id" to "123",
-            "name" to "Test Name",
-            "description" to "Test Description"
-        ),
-        mapOf(
-            "id" to "123",
-            "name" to "Test Name",
-            "description" to "Test Description"
-        ),
-        Date().toInstant().epochSecond,
-        "user"
-    )
-
+    
 }

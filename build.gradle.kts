@@ -65,6 +65,7 @@ dependencies {
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
     implementation("io.confluent:kafka-json-schema-serializer:7.4.0")
 
+
     // Message Broker Implementations
     implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
@@ -79,13 +80,10 @@ dependencies {
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.2")
 
     // Testing Libraries
-    testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("io.confluent:kafka-schema-registry-client:7.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:rabbitmq")
-    testImplementation("org.testcontainers:kafka")
-    testImplementation("org.testcontainers:postgresql")
+
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -93,6 +91,17 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation("org.springframework.cloud:spring-cloud-stream-test-binder")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Test Containers
+    testImplementation("org.testcontainers:rabbitmq")
+    testImplementation("org.testcontainers:kafka")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:localstack:1.20.1")
+
+    // AWS SDK
+    testImplementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+    testImplementation("software.amazon.awssdk:sqs:2.31.40")
 
     // Mock Avro Models for Testing
     testImplementation("paladin.schemas:models:0.0.1-SNAPSHOT")

@@ -32,8 +32,6 @@ class SchemaRegistryContainer(image: DockerImageName) : GenericContainer<SchemaR
             // Wait for Kafka to be ready before starting Schema Registry
             .dependsOn(kafkaContainer)
             .waitingFor(Wait.forHttp("/subjects").forStatusCode(200).forPort(SCHEMA_REGISTRY_PORT))
-
-
     }
 
     val schemaRegistryUrl: String

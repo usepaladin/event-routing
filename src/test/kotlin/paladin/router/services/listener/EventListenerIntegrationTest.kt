@@ -42,6 +42,8 @@ import util.kafka.SchemaRegistryFactory
 import util.kafka.TestKafkaProducerFactory
 import util.mock.Operation
 import util.mock.User
+import util.mock.mockAvroKey
+import util.mock.mockAvroPayload
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -293,8 +295,8 @@ class EventListenerIntegrationTest {
         assertNotNull(listener.id, "Listener ID should be set after registration")
         registry.startListener(listener.topic)
 
-        val key: MockKeyAv = TestKafkaProducerFactory.mockAvroKey()
-        val payload: ChangeEventData = TestKafkaProducerFactory.mockAvroPayload()
+        val key: MockKeyAv = mockAvroKey()
+        val payload: ChangeEventData = mockAvroPayload()
         template.send(listener.topic, key, payload).get()
         // Assert: Verify message processing
         val processed = latch.await(5, TimeUnit.SECONDS)
@@ -364,7 +366,7 @@ class EventListenerIntegrationTest {
         registry.startListener(listener.topic)
 
         val key: String = "test-key"
-        val payload: ChangeEventData = TestKafkaProducerFactory.mockAvroPayload()
+        val payload: ChangeEventData = mockAvroPayload()
         template.send(listener.topic, key, payload).get()
         // Assert: Verify message processing
         val processed = latch.await(5, TimeUnit.SECONDS)

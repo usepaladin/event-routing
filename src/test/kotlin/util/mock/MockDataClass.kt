@@ -1,5 +1,11 @@
 package util.mock
 
+import paladin.avro.ChangeEventData
+import paladin.avro.ChangeEventOperation
+import paladin.avro.EventType
+import paladin.avro.MockKeyAv
+import java.util.*
+
 data class Operation(val id: String, val operation: OperationType) {
     enum class OperationType {
         CREATE,
@@ -53,3 +59,25 @@ data class User(val name: String, val age: Int, val email: String? = null) {
     }
 }
 
+
+fun mockAvroKey() = MockKeyAv(
+    UUID.randomUUID().toString(),
+    EventType.CREATE
+)
+
+fun mockAvroPayload() = ChangeEventData(
+    ChangeEventOperation.CREATE,
+    null,
+    mapOf(
+        "id" to "123",
+        "name" to "Test Name",
+        "description" to "Test Description"
+    ),
+    mapOf(
+        "id" to "123",
+        "name" to "Test Name",
+        "description" to "Test Description"
+    ),
+    Date().toInstant().epochSecond,
+    "user"
+)
