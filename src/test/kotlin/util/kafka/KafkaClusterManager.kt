@@ -11,7 +11,7 @@ import org.testcontainers.utility.DockerImageName
 import util.KafkaCluster
 import java.util.*
 
-class KafkaTestClusterManager {
+class KafkaClusterManager {
     // Store cluster configurations
     private val clusters = mutableMapOf<String, KafkaCluster>()
 
@@ -90,16 +90,8 @@ class KafkaTestClusterManager {
         }
     }
 
-    // Get the AdminClient for a specific cluster
-    fun getAdminClient(clusterId: String): AdminClient {
-        return clusters[clusterId]?.client
-            ?: throw IllegalStateException("Kafka Cluster $clusterId not initialized")
-    }
-
-    // Get the SchemaRegistryClient for a specific cluster
-    fun getSchemaRegistryClient(clusterId: String): SchemaRegistryClient {
-        return clusters[clusterId]?.schemaRegistryClient
-            ?: throw IllegalStateException("Kafka Cluster $clusterId not initialized")
+    fun getCluster(id: String): KafkaCluster {
+        return clusters[id] ?: throw IllegalStateException("Kafka Cluster $id not initialized")
     }
 
     // Clean up a specific cluster

@@ -22,10 +22,8 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.Network
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.kafka.ConfluentKafkaContainer
-import org.testcontainers.utility.DockerImageName
 import paladin.avro.ChangeEventData
 import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
@@ -34,12 +32,8 @@ import paladin.router.models.listener.EventListener
 import paladin.router.models.listener.ListenerRegistrationRequest
 import paladin.router.repository.EventListenerRepository
 import paladin.router.services.dispatch.DispatchService
-import paladin.router.services.schema.SchemaService
 import util.TestLogAppender
-import util.kafka.SchemaRegistrationOperation
-import util.kafka.SchemaRegistryContainer
-import util.kafka.SchemaRegistryFactory
-import util.kafka.TestKafkaProducerFactory
+import util.kafka.*
 import util.mock.Operation
 import util.mock.User
 import util.mock.mockAvroKey
@@ -61,9 +55,6 @@ class EventListenerIntegrationTest {
     private var logger: KLogger = KotlinLogging.logger {}
     private lateinit var logbackLogger: Logger
 
-    @Autowired
-    private lateinit var schemaService: SchemaService
-
     @BeforeEach
     fun setup() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
@@ -77,46 +68,26 @@ class EventListenerIntegrationTest {
     }
 
     companion object {
-        private val logger = KotlinLogging.logger {}
-        private val network = Network.newNetwork()
+        private const val KAFKA_CLUSTER_1 = "test-cluster-1"
 
-        // Give Kafka a consistent network alias
-        private val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
-            .withListener("kafka:19092")
-            .withNetwork(network)
-            .withReuse(true)
-
-
-        private val schemaRegistryContainer =
-            SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))
-                .withNetwork(network)
+        private val kafkaManager = KafkaClusterManager()
 
         @BeforeAll
         @JvmStatic
-        fun startKafka() {
-            kafkaContainer.start()
-            logger.info { "Kafka container started with bootstrap servers: ${kafkaContainer.bootstrapServers}" }
-
-            // Register and start schema registry after Kafka is running
-            schemaRegistryContainer.withKafka(kafkaContainer).start()
-
-            logger.info { "Schema Registry started with URL: ${schemaRegistryContainer.schemaRegistryUrl}" }
+        fun setupClusters() {
+            kafkaManager.init(KAFKA_CLUSTER_1, includeSchemaRegistry = true)
         }
 
         @AfterAll
         @JvmStatic
-        fun stopKafka() {
-            schemaRegistryContainer.stop()
-            kafkaContainer.stop()
-            network.close()
-            logger.info { "Containers stopped and network closed" }
+        fun shutdownClusters() {
+            kafkaManager.cleanupAll()
         }
 
         @DynamicPropertySource
         @JvmStatic
-        fun kafkaProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.kafka.bootstrap-servers") { kafkaContainer.bootstrapServers }
-            registry.add("spring.kafka.schema-registry-url") { schemaRegistryContainer.schemaRegistryUrl }
+        fun overrideConfigurations(registry: DynamicPropertyRegistry) {
+            kafkaManager.registerProperties(KAFKA_CLUSTER_1, registry, "spring.kafka.clusters.$KAFKA_CLUSTER_1\"")
         }
     }
 
@@ -131,6 +102,12 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `should register and process message through EventListener`() {
+        val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
+
+        if (schemaRegistry == null) {
+            throw IllegalStateException("Schema Registry is not available")
+        }
+
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val key = "test-key"
@@ -154,7 +131,7 @@ class EventListenerIntegrationTest {
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
-            kafkaContainer,
+            kafka,
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.STRING
         )
@@ -185,6 +162,12 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `should handle multiple messages correctly`() {
+        val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
+
+        if (schemaRegistry == null) {
+            throw IllegalStateException("Schema Registry is not available")
+        }
+
         // Arrange
         val topic = "multi-message-topic-${UUID.randomUUID()}"
         val groupId = "multi-group"
@@ -208,7 +191,7 @@ class EventListenerIntegrationTest {
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
-            kafkaContainer,
+            kafka,
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.STRING
         )
@@ -237,12 +220,18 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle and deserialize avro payloads`() {
+        val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
+
+        if (schemaRegistry == null) {
+            throw IllegalStateException("Schema Registry is not available")
+        }
+
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
         SchemaRegistryFactory.init(
-            schemaRegistryContainer.schemaRegistryUrl,
+            schemaRegistry.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(
                     AvroSchema(MockKeyAv.`SCHEMA$`),
@@ -266,7 +255,7 @@ class EventListenerIntegrationTest {
             maxPollRecords = 10,
             maxPollIntervalMs = 300000,
             sessionTimeoutMs = 10000,
-            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistryUrl = schemaRegistry.schemaRegistryUrl
         )
 
         val (registry, listener) = configureEventListener(
@@ -284,12 +273,11 @@ class EventListenerIntegrationTest {
             latch.countDown()
         }
 
-        @Suppress("UNCHECKED_CAST")
         val template = TestKafkaProducerFactory.createKafkaTemplate<SpecificRecord, SpecificRecord>(
-            kafkaContainer,
+            kafka,
             Broker.BrokerFormat.AVRO,
             Broker.BrokerFormat.AVRO,
-            schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistry.schemaRegistryUrl
         )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
@@ -313,12 +301,18 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle and deserialize combination consumers`() {
+        val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
+
+        if (schemaRegistry == null) {
+            throw IllegalStateException("Schema Registry is not available")
+        }
+
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
         SchemaRegistryFactory.init(
-            schemaRegistryContainer.schemaRegistryUrl,
+            schemaRegistry.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(
                     AvroSchema(ChangeEventData.`SCHEMA$`),
@@ -337,7 +331,7 @@ class EventListenerIntegrationTest {
             maxPollRecords = 10,
             maxPollIntervalMs = 300000,
             sessionTimeoutMs = 10000,
-            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistryUrl = schemaRegistry.schemaRegistryUrl
         )
 
         val (registry, listener) = configureEventListener(
@@ -356,10 +350,10 @@ class EventListenerIntegrationTest {
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, SpecificRecord>(
-            kafkaContainer,
+            kafka,
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.AVRO,
-            schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistry.schemaRegistryUrl
         )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
@@ -383,12 +377,18 @@ class EventListenerIntegrationTest {
 
     @Test
     fun `event listener should handle failed schema validation for Json Schemas`() {
+        val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
+
+        if (schemaRegistry == null) {
+            throw IllegalStateException("Schema Registry is not available")
+        }
+
         val topic = "test-topic-${UUID.randomUUID()}"
         val groupId = "test-group"
         val latch = CountDownLatch(1)
 
         SchemaRegistryFactory.init(
-            schemaRegistryContainer.schemaRegistryUrl,
+            schemaRegistry.schemaRegistryUrl,
             listOf(
                 SchemaRegistrationOperation(
                     // Mismatched Schema
@@ -413,7 +413,7 @@ class EventListenerIntegrationTest {
             maxPollRecords = 10,
             maxPollIntervalMs = 300000,
             sessionTimeoutMs = 10000,
-            schemaRegistryUrl = schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistryUrl = schemaRegistry.schemaRegistryUrl
         )
 
         val (registry, listener) = configureEventListener(
@@ -432,10 +432,10 @@ class EventListenerIntegrationTest {
         }
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<Operation, User>(
-            kafkaContainer,
+            kafka,
             Broker.BrokerFormat.JSON,
             Broker.BrokerFormat.JSON,
-            schemaRegistryContainer.schemaRegistryUrl
+            schemaRegistry.schemaRegistryUrl
         )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
@@ -496,6 +496,13 @@ class EventListenerIntegrationTest {
         val listener = registry.registerListener(request)
         return Pair(registry, listener)
     }
+
+    private fun getKafkaInstance(id: String): Pair<ConfluentKafkaContainer, SchemaRegistryContainer?> {
+        return kafkaManager.getCluster(id).let {
+            Pair(it.container, it.schemaRegistryContainer)
+        }
+    }
+
 }
 
 
