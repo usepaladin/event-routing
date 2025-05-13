@@ -15,7 +15,9 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Bean
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
@@ -91,8 +93,19 @@ class EventListenerIntegrationTest {
         }
     }
 
-    @Autowired
-    private lateinit var kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    // Kafka consumer factories
+    @Bean(name = ["kafkaClusterConsumerFactory"])
+    fun kafkaCluster1ConsumerFactory(): DefaultKafkaConsumerFactory<Any, Any> {
+        return DefaultKafkaConsumerFactory(
+            mapOf(
+                "bootstrap.servers" to kafkaManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
+                "group.id" to "test-group-1",
+                "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+                "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+                "auto.offset.reset" to "earliest"
+            )
+        )
+    }
 
     @Autowired
     private lateinit var eventListenerRepository: EventListenerRepository
@@ -101,22 +114,27 @@ class EventListenerIntegrationTest {
     private lateinit var dispatchService: DispatchService
 
     @Test
-    fun `should register and process message through EventListener`() {
+    fun `should register and process message through EventListener`(
+        @Qualifier("kafkaClusterConsumerFactory") kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    ) {
         val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
-
         if (schemaRegistry == null) {
             throw IllegalStateException("Schema Registry is not available")
         }
 
-        val topic = "test-topic-${UUID.randomUUID()}"
+        val topic = "test-topic-${UUID.randomUUID()}".also {
+            kafkaManager.createTopic(KAFKA_CLUSTER_1, it)
+        }
         val groupId = "test-group"
         val key = "test-key"
         val value = "test-value"
         val latch = CountDownLatch(1)
 
+
         // Mock DispatchService to verify dispatchEvents call
         val spiedDispatchService = spyk(dispatchService)
         val (registry: EventListenerRegistry, listener: EventListener) = configureEventListener(
+            kafkaConsumerFactory,
             spiedDispatchService,
             topic,
             groupId,
@@ -135,7 +153,6 @@ class EventListenerIntegrationTest {
             Broker.BrokerFormat.STRING,
             Broker.BrokerFormat.STRING
         )
-
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
 
@@ -161,7 +178,9 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `should handle multiple messages correctly`() {
+    fun `should handle multiple messages correctly`(
+        @Qualifier("kafkaClusterConsumerFactory") kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    ) {
         val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
 
         if (schemaRegistry == null) {
@@ -177,6 +196,7 @@ class EventListenerIntegrationTest {
         // Mock DispatchService to verify dispatchEvents call
         val spiedDispatchService: DispatchService = spyk(dispatchService)
         val (registry: EventListenerRegistry, _: EventListener) = configureEventListener(
+            kafkaConsumerFactory,
             spiedDispatchService,
             topic,
             groupId,
@@ -219,7 +239,9 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `event listener should handle and deserialize avro payloads`() {
+    fun `event listener should handle and deserialize avro payloads`(
+        @Qualifier("kafkaClusterConsumerFactory") kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    ) {
         val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
 
         if (schemaRegistry == null) {
@@ -259,6 +281,7 @@ class EventListenerIntegrationTest {
         )
 
         val (registry, listener) = configureEventListener(
+            kafkaConsumerFactory,
             spiedDispatchService,
             topic,
             groupId,
@@ -300,7 +323,9 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `event listener should handle and deserialize combination consumers`() {
+    fun `event listener should handle and deserialize combination consumers`(
+        @Qualifier("kafkaClusterConsumerFactory") kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    ) {
         val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
 
         if (schemaRegistry == null) {
@@ -335,6 +360,7 @@ class EventListenerIntegrationTest {
         )
 
         val (registry, listener) = configureEventListener(
+            kafkaConsumerFactory,
             spiedDispatchService,
             topic,
             groupId,
@@ -376,7 +402,9 @@ class EventListenerIntegrationTest {
     }
 
     @Test
-    fun `event listener should handle failed schema validation for Json Schemas`() {
+    fun `event listener should handle failed schema validation for Json Schemas`(
+        @Qualifier("kafkaClusterConsumerFactory") kafkaConsumerFactory: DefaultKafkaConsumerFactory<Any, Any>
+    ) {
         val (kafka, schemaRegistry) = getKafkaInstance(KAFKA_CLUSTER_1)
 
         if (schemaRegistry == null) {
@@ -417,6 +445,7 @@ class EventListenerIntegrationTest {
         )
 
         val (registry, listener) = configureEventListener(
+            kafkaConsumerFactory,
             spiedDispatchService,
             topic,
             groupId,
@@ -461,6 +490,7 @@ class EventListenerIntegrationTest {
     }
 
     private fun configureEventListener(
+        factory: DefaultKafkaConsumerFactory<Any, Any>,
         service: DispatchService,
         topic: String,
         groupId: String,
@@ -470,7 +500,7 @@ class EventListenerIntegrationTest {
     ): Pair<EventListenerRegistry, EventListener> {
         // Register EventListener
         val registry = EventListenerRegistry(
-            kafkaConsumerFactory,
+            factory,
             eventListenerRepository,
             service,
             logger
