@@ -26,8 +26,8 @@ class KafkaClusterManager {
 
         // Start Kafka container
         val kafkaContainer = ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+            .withListener("kafka:19092")
             .withNetwork(network)
-            .withNetworkAliases("kafka")
             .withReuse(true)
             .apply { start() }
 
@@ -35,8 +35,6 @@ class KafkaClusterManager {
             if (!it) return@let null
 
             val container = SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))
-                .withNetwork(network)
-                .withNetworkAliases("schema-registry")
                 .withReuse(true)
                 .apply {
                     withKafka(kafkaContainer)
@@ -60,7 +58,9 @@ class KafkaClusterManager {
             container = kafkaContainer,
             client = adminClient,
             topics = mutableListOf()
-        )
+        ).also {
+            clusters[id] = it
+        }
     }
 
     // Register Spring properties for a specific cluster
