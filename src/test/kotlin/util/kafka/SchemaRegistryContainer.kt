@@ -27,6 +27,7 @@ class SchemaRegistryContainer(image: DockerImageName) : GenericContainer<SchemaR
                 "SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS",
                 "PLAINTEXT://kafka:19092"
             )
+
             .withEnv("SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL", "PLAINTEXT")
 
             // Wait for Kafka to be ready before starting Schema Registry

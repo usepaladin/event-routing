@@ -49,10 +49,11 @@ class KafkaClusterManager {
         val adminProps = Properties().apply {
             put("bootstrap.servers", kafkaContainer.bootstrapServers)
         }
+
         val adminClient = AdminClient.create(adminProps)
 
         return KafkaCluster(
-            network,
+            network = network,
             schemaRegistryContainer = schemaRegistry?.first,
             schemaRegistryClient = schemaRegistry?.second,
             container = kafkaContainer,
