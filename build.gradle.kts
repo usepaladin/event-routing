@@ -97,9 +97,10 @@ dependencies {
     testImplementation("org.testcontainers:kafka")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:localstack:1.20.1")
+    testImplementation("org.testcontainers:localstack:1.20.2")
 
     // AWS SDK
+    testImplementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit:4.2.1")
     testImplementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
     testImplementation("software.amazon.awssdk:sqs:2.31.40")
 

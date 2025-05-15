@@ -8,6 +8,8 @@ spring:
     url: ${POSTGRES_JDBC}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+
+
   jpa:
     properties:
       hibernate:

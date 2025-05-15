@@ -12,7 +12,7 @@ class SqsClusterManager {
 
     private val clusters = mutableMapOf<String, MessageBrokerCluster<LocalStackContainer, SqsClient>>()
 
-    fun initCluster(id: String): MessageBrokerCluster<LocalStackContainer, SqsClient> {
+    fun init(id: String): MessageBrokerCluster<LocalStackContainer, SqsClient> {
         if (clusters.containsKey(id)) {
             throw IllegalStateException("SQS Cluster $id already initialized")
         }

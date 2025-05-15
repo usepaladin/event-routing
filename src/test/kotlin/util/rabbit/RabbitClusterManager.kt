@@ -7,12 +7,12 @@ import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.utility.DockerImageName
 import util.MessageBrokerCluster
 
-class RabbitMQTestClusterManager {
+class RabbitClusterManager {
     // Store cluster configurations
     private val clusters = mutableMapOf<String, MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory>>()
 
     // Initialize a new RabbitMQ cluster
-    fun initializeCluster(clusterId: String): MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory> {
+    fun init(clusterId: String): MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory> {
         if (clusters.containsKey(clusterId)) {
             throw IllegalStateException("RabbitMQ Cluster $clusterId already initialized")
         }
@@ -48,11 +48,12 @@ class RabbitMQTestClusterManager {
     }
 
     // Create a queue in the specified cluster
-    fun createQueue(clusterId: String, queueName: String) {
+    fun createQueue(clusterId: String, queueName: String): String {
         val config = clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
         config.client.createConnection().createChannel(true).use { channel ->
             channel.queueDeclare(queueName, true, false, false, null)
             config.boostrapUrls.add(queueName)
+            return queueName
         }
     }
 

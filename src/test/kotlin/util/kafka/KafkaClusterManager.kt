@@ -14,7 +14,7 @@ import java.util.*
 class KafkaClusterManager {
     // Store cluster configurations
     private val clusters = mutableMapOf<String, KafkaCluster>()
-
+    
     // Initialize a new Kafka cluster with Schema Registry
     fun init(id: String, includeSchemaRegistry: Boolean = true): KafkaCluster {
         if (clusters.containsKey(id)) {
