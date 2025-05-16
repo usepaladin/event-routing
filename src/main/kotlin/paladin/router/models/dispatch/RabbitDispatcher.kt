@@ -7,11 +7,13 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
+import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import paladin.router.models.configuration.brokers.MessageProducer
 import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
 import paladin.router.models.configuration.brokers.core.RabbitProducerConfig
 import paladin.router.services.schema.SchemaService
+import java.util.*
 
 data class RabbitDispatcher(
     override val producer: MessageProducer,
@@ -37,56 +39,7 @@ data class RabbitDispatcher(
      * @param topic The destination exchange/queue and serialization details.
      */
     override fun <V> dispatch(payload: V, topic: DispatchTopic) {
-        synchronized(lock) {
-            if (messageProducer == null) {
-                val errorMsg =
-                    "RabbitMQ Broker => Broker name: ${name()} => Unable to send message => Producer has not been instantiated"
-                logger.error { errorMsg }
-                errorCounter?.increment()
-                return
-            }
-
-            val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
-            val routingKey = producerConfig.defaultRoutingKey ?: "" // Use default or empty routing key
-
-            var lastException: Exception? = null
-            repeat(producerConfig.retryMaxAttempts + 1) { attempt ->
-                sendTimer?.record {
-                    try {
-                        if (config.sync) {
-                            messageProducer.convertAndSend(topic.destinationTopic, routingKey, dispatchValue)
-                            logger.info {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Message sent synchronously to topic: $topic (no key)"
-                            }
-                            return@repeat
-                        } else {
-                            producer.convertAndSend(topic.destinationTopic, routingKey, dispatchValue)
-                            logger.info {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Message sent asynchronously to topic: $topic (no key)"
-                            }
-                            return@repeat
-                        }
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (attempt < config.retries) {
-                            logger.warn {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Retry attempt ${attempt + 1} for topic: $topic (no key)"
-                            }
-                            Thread.sleep(config.retryBackoffMs)
-                        }
-                    }
-                }
-            }
-
-            if (lastException != null) {
-                val errorMsg =
-                    "RabbitMQ Broker => Broker name: ${broker.brokerName} => Error sending message to topic: $topic (no key)"
-                logger.error(lastException) { errorMsg }
-                errorCounter?.increment()
-                this.updateConnectionState(MessageDispatcherState.Error(lastException))
-                if (config.throwOnError) throw lastException
-            }
-        }
+        dispatch(producerConfig.defaultRoutingKey ?: "", payload, topic)
     }
 
     /**
@@ -99,57 +52,46 @@ data class RabbitDispatcher(
      */
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         synchronized(lock) {
-            if (producer == null) {
-                val errorMsg =
-                    "RabbitMQ Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated"
-                logger.error { errorMsg }
-                errorCounter?.increment()
-                if (config.throwOnError) throw IllegalStateException(errorMsg)
-                return
-            }
+            messageProducer.let {
+                if (it == null) {
+                    // Producer has not been instantiated
+                    errorCounter?.increment()
+                    logger.error { "RabbitMQ Producer => Producer name: ${name()} => Unable to send message => Producer has not been instantiated" }
+                    return
+                }
 
-            val dispatchKey = convertToFormat(key, topic.key, topic.keySchema)
-            val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
 
-            var lastException: Exception? = null
-            repeat(config.retries + 1) { attempt ->
-                sendTimer?.record {
-                    try {
-                        if (config.sync) {
-                            producer.convertAndSend(topic.destinationTopic, dispatchKey.toString(), dispatchValue)
-                            logger.info {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Message sent synchronously to topic: $topic"
-                            }
-                            return@repeat
+                val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
+                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+                try {
+                    val runnable = Runnable {
+                        if (!producerConfig.allowAsync) {
+                            val correlationData = CorrelationData(UUID.randomUUID().toString())
+                            it.convertSendAndReceive(
+                                topic.destinationTopic,
+                                dispatchKey.toString(),
+                                dispatchValue,
+                                correlationData
+                            )
+                            logger.info { "RabbitMQ Producer => Producer name: ${name()} => Message sent synchronously to topic: $topic" }
                         } else {
-                            producer.convertAndSend(topic.destinationTopic, dispatchKey.toString(), dispatchValue)
-                            logger.info {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Message sent asynchronously to topic: $topic"
-                            }
-                            return@repeat
-                        }
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (attempt < config.retries) {
-                            logger.warn {
-                                "RabbitMQ Broker => Broker name: ${broker.brokerName} => Retry attempt ${attempt + 1} for topic: $topic"
-                            }
-                            Thread.sleep(config.retryBackoffMs)
+                            messageProducer?.convertAndSend(
+                                topic.destinationTopic,
+                                dispatchKey.toString(),
+                                dispatchValue
+                            )
                         }
                     }
+                } catch (ex: Exception) {
+                    errorCounter?.increment()
+                    logger.error(ex) { "RabbitMQ Producer => Producer name: ${name()} => Error sending message to topic: $topic" }
+                    this.updateConnectionState(MessageDispatcherState.Error(ex))
                 }
-            }
 
-            if (lastException != null) {
-                val errorMsg =
-                    "RabbitMQ Broker => Broker name: ${broker.brokerName} => Error sending message to topic: $topic"
-                logger.error(lastException) { errorMsg }
-                errorCounter?.increment()
-                this.updateConnectionState(MessageDispatcherState.Error(lastException))
-                if (config.throwOnError) throw lastException
             }
         }
     }
+
 
     override fun testConnection() {
         synchronized(lock) {
@@ -158,10 +100,10 @@ data class RabbitDispatcher(
                     // Test by declaring a temporary queue
                     channel.queueDeclarePassive(name()) // Assumes brokerName is a valid queue for testing
                 }
-                logger.info { "RabbitMQ Broker => Broker name: ${name()} => Connection successful" }
+                logger.info { "RabbitMQ Producer => Producer name: ${name()} => Connection successful" }
                 this.updateConnectionState(MessageDispatcherState.Connected)
             } catch (e: Exception) {
-                logger.error(e) { "RabbitMQ Broker => Broker name: ${name()} => Connection failed" }
+                logger.error(e) { "RabbitMQ Producer => Producer name: ${name()} => Connection failed" }
                 this.updateConnectionState(MessageDispatcherState.Error(e))
             }
         }
@@ -169,8 +111,6 @@ data class RabbitDispatcher(
 
     override fun build() {
         synchronized(lock) {
-
-
             this.updateConnectionState(MessageDispatcherState.Building)
 
             // Create ConnectionFactory
@@ -200,13 +140,13 @@ data class RabbitDispatcher(
                 setMandatory(producerConfig.publisherReturns) // Required for publisher returns
                 setConfirmCallback { _, ack, cause ->
                     if (!ack) {
-                        logger.error { "RabbitMQ Broker => Broker name: ${name()} => Message delivery failed: $cause" }
+                        logger.error { "RabbitMQ Producer => Producer name: ${name()} => Message delivery failed: $cause" }
                         errorCounter?.increment()
                     }
                 }
                 setReturnsCallback { returned ->
                     logger.error {
-                        "RabbitMQ Broker => Broker name: ${name()} => Message returned: ${returned.replyText}, exchange: ${returned.exchange}, routingKey: ${returned.routingKey}"
+                        "RabbitMQ Producer => Producer name: ${name()} => Message returned: ${returned.replyText}, exchange: ${returned.exchange}, routingKey: ${returned.routingKey}"
                     }
                     errorCounter?.increment()
                 }
@@ -224,10 +164,10 @@ data class RabbitDispatcher(
             try {
                 // Close the RabbitTemplate
                 messageProducer?.stop()
-                logger.info { "RabbitMQ Broker => Broker name: ${name()} => Producer closed successfully" }
+                logger.info { "RabbitMQ Producer => Producer name: ${name()} => Producer closed successfully" }
                 this.updateConnectionState(MessageDispatcherState.Disconnected)
             } catch (e: Exception) {
-                logger.error(e) { "RabbitMQ Broker => Broker name: ${name()} => Error closing producer" }
+                logger.error(e) { "RabbitMQ Producer => Producer name: ${name()} => Error closing producer" }
                 errorCounter?.increment()
             } finally {
                 messageProducer = null
@@ -237,32 +177,32 @@ data class RabbitDispatcher(
 
 
     /**
-     * Validates the configuration properties for the RabbitMQ broker.
+     * Validates the configuration properties for the RabbitMQ Producer.
      */
     override fun validate() {
-        if (connectionConfig.host.isNullOrEmpty()) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Host cannot be null or empty")
+        if (connectionConfig.host.isEmpty()) {
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Host cannot be null or empty")
         }
         if (connectionConfig.port <= 0) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Port must be greater than 0")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Port must be greater than 0")
         }
         if (connectionConfig.username.isNullOrEmpty()) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Username cannot be null or empty")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Username cannot be null or empty")
         }
         if (connectionConfig.password.isNullOrEmpty()) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Password cannot be null or empty")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Password cannot be null or empty")
         }
         if (producerConfig.retryMaxAttempts < 0) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Retries cannot be less than 0")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Retries cannot be less than 0")
         }
         if (producerConfig.retryBackoff <= 0) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Retry backoff must be greater than 0")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Retry backoff must be greater than 0")
         }
         if (producerConfig.connectionTimeout <= 0) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Connection timeout must be greater than 0")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Connection timeout must be greater than 0")
         }
         if (producerConfig.channelCacheSize <= 0) {
-            throw IllegalArgumentException("RabbitMQ Broker => Broker name: ${name()} => Channel cache size must be greater than 0")
+            throw IllegalArgumentException("RabbitMQ Producer => Producer name: ${name()} => Channel cache size must be greater than 0")
         }
     }
 

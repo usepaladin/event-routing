@@ -60,7 +60,7 @@ data class KafkaDispatcher(
                 if (it == null) {
                     // Producer has not been instantiated
                     errorCounter?.increment()
-                    logger.error { "Kafka Broker => Broker name: ${name()} => Unable to send message => Producer has not been instantiated" }
+                    logger.error { "Kafka Producer => Producer Name: ${name()} => Unable to send message => Producer has not been instantiated" }
                     return
                 }
 
@@ -71,18 +71,18 @@ data class KafkaDispatcher(
                 try {
                     val runnable = Runnable {
                         if (!producerConfig.allowAsync) {
-                            messageProducer?.send(record)?.get()
-                            logger.info { "Kafka Broker => Broker name: ${name()} => Message sent synchronously to topic: $topic" }
+                            it.send(record).get()
+                            logger.info { "Kafka Producer => Producer Name: ${name()} => Message sent synchronously to topic: $topic" }
                         } else {
-                            messageProducer?.send(record) { metadata, exception ->
+                            it.send(record) { metadata, exception ->
                                 if (exception != null) {
                                     errorCounter?.increment()
                                     logger.error(exception) {
-                                        "Kafka Broker => Broker name: ${name()} => Error sending message to topic: $topic"
+                                        "Kafka Producer => Producer Name: ${name()} => Error sending message to topic: $topic"
                                     }
                                 } else {
                                     logger.info {
-                                        "Kafka Broker => Broker name: ${name()} => Message sent asynchronously to topic: $topic, " +
+                                        "Kafka Producer => Producer Name: ${name()} => Message sent asynchronously to topic: $topic, " +
                                                 "partition: ${metadata.partition()}, offset: ${metadata.offset()}"
                                     }
                                 }
@@ -93,7 +93,7 @@ data class KafkaDispatcher(
                     sendTimer?.record(runnable) ?: runnable.run()
                 } catch (e: Exception) {
                     errorCounter?.increment()
-                    logger.error(e) { "Kafka Broker => Broker name: ${name()} => Error sending message to topic: $topic" }
+                    logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Error sending message to topic: $topic" }
                     this.updateConnectionState(MessageDispatcherState.Error(e))
                 }
 
@@ -147,31 +147,31 @@ data class KafkaDispatcher(
             }
             AdminClient.create(adminProps).use { adminClient ->
                 adminClient.listTopics().names().get()
-                logger.info { "Kafka Broker => Broker name: ${name()} => Connection successful" }
+                logger.info { "Kafka Producer => Producer Name: ${name()} => Connection successful" }
                 this.updateConnectionState(MessageDispatcherState.Connected)
             }
         } catch (e: Exception) {
-            logger.error(e) { "Kafka Broker => Broker name: ${name()} => Connection failed" }
+            logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Connection failed" }
             this.updateConnectionState(MessageDispatcherState.Error(e))
         }
     }
 
     override fun validate() {
         if (connectionConfig.bootstrapServers.isNullOrEmpty()) {
-            throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Bootstrap servers cannot be null or empty")
+            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Bootstrap servers cannot be null or empty")
         }
         if (producerConfig.acks.isEmpty()) {
-            throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Acks cannot be null or empty")
+            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Acks cannot be null or empty")
         }
         if (producerConfig.retries < 0) {
-            throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Retries cannot be less than 0")
+            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Retries cannot be less than 0")
         }
         if (producerConfig.requestTimeoutMs <= 0) {
-            throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Request timeout must be greater than 0")
+            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Request timeout must be greater than 0")
         }
 
         if (this.requiresSchemaRegistry && connectionConfig.schemaRegistryUrl.isNullOrEmpty()) {
-            throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Schema registry URL cannot be null or empty for Avro format")
+            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
 
@@ -180,10 +180,10 @@ data class KafkaDispatcher(
             try {
                 messageProducer?.flush()
                 messageProducer?.close()
-                logger.info { "Kafka Broker => Broker name: ${name()} => Producer closed successfully" }
+                logger.info { "Kafka Producer => Producer Name: ${name()} => Producer closed successfully" }
                 this.updateConnectionState(MessageDispatcherState.Disconnected)
             } catch (e: Exception) {
-                logger.error(e) { "Kafka Broker => Broker name: ${name()} => Error closing producer" }
+                logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Error closing producer" }
             } finally {
                 messageProducer = null
             }

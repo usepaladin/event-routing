@@ -6,6 +6,7 @@ import paladin.router.util.Configurable
 data class RabbitProducerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.RABBIT,
     var exchangeName: String?,
+    var allowAsync: Boolean = true,
     var queueName: String?,
     var prefetchCount: Int = 10,
     var publisherReturns: Boolean = true,
@@ -20,6 +21,7 @@ data class RabbitProducerConfig(
     override fun updateConfiguration(config: Configurable): RabbitProducerConfig {
         if (config is RabbitProducerConfig) {
             this.exchangeName = config.exchangeName
+            this.allowAsync = config.allowAsync
             this.queueName = config.queueName
             this.prefetchCount = config.prefetchCount
             this.publisherReturns = config.publisherReturns
