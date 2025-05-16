@@ -90,13 +90,13 @@ data class MessageBrokerConfigurationEntity(
             messageProducer.let {
                 return MessageBrokerConfigurationEntity(
                     id = it.id,
-                    producerName = it.brokerName,
+                    producerName = it.producerName,
                     brokerType = it.brokerType,
                     keyFormat = it.keySerializationFormat,
                     valueFormat = it.valueSerializationFormat,
                     producerConfigEncrypted = encryptedConfig,
                     brokerConfig = objectMapper.convertValue(producerConfig),
-                    defaultProducer = it.defaultBroker,
+                    defaultProducer = it.defaultProducer,
                     createdAt = it.createdAt,
                     updatedAt = it.updatedAt
                 )

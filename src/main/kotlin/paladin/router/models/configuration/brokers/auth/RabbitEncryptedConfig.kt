@@ -8,6 +8,7 @@ data class RabbitEncryptedConfig(
     var virtualHost: String? = null,
     var username: String? = null,
     var password: String? = null,
+    var sslEnabled: Boolean = false,
 ) : EncryptedProducerConfig {
     override fun updateConfiguration(config: Configurable): RabbitEncryptedConfig {
         if (config is RabbitEncryptedConfig) {
