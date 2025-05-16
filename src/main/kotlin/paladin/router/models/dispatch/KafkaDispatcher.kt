@@ -2,6 +2,7 @@ package paladin.router.models.dispatch
 
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.apache.kafka.clients.admin.AdminClient
@@ -17,21 +18,36 @@ import paladin.router.services.schema.SchemaService
 import paladin.router.util.factory.SerializerFactory
 import java.util.*
 
-
+/**
+ * A dispatcher for sending messages to a Kafka broker using a [KafkaProducer].
+ * Supports STRING, JSON, and AVRO serialization formats with optional schema registry integration.
+ *
+ * @param producer The Kafka producer instance used for setting up the message producer
+ * @param producer The producer configuration (e.g., acks, retries).
+ * @param connectionConfig Configuration properties for Broker connection/authentication (e.g., bootstrap servers, schema registry URL).
+ * @param schemaService The service for serializing payloads.
+ * @param meterRegistry Optional registry for metrics (e.g., Micrometer).
+ */
 data class KafkaDispatcher(
-    override val producerConfig: MessageProducer,
-    override val brokerConfig: KafkaProducerConfig,
-    override val brokerAuthConfig: KafkaEncryptedConfig,
+    override val producer: MessageProducer,
+    override val producerConfig: KafkaProducerConfig,
+    override val connectionConfig: KafkaEncryptedConfig,
     override val schemaService: SchemaService,
     override val meterRegistry: MeterRegistry? = null,
 ) : MessageDispatcher() {
 
-    private var producer: KafkaProducer<Any, Any>? = null
+    private var messageProducer: KafkaProducer<Any, Any>? = null
     private val lock = Any()
     private val sendTimer: Timer? = meterRegistry?.timer(
         "kafka.dispatcher.send",
-        "broker", name()
+        "producer", name()
     )
+
+    private val errorCounter: Counter? = meterRegistry?.counter(
+        "kafka.dispatcher.error",
+        "producer", name()
+    )
+
     override val logger: KLogger = KotlinLogging.logger {}
 
     override fun <V> dispatch(payload: V, topic: DispatchTopic) {
@@ -40,8 +56,10 @@ data class KafkaDispatcher(
 
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         synchronized(lock) {
-            producer.let {
+            messageProducer.let {
                 if (it == null) {
+                    // Producer has not been instantiated
+                    errorCounter?.increment()
                     logger.error { "Kafka Broker => Broker name: ${name()} => Unable to send message => Producer has not been instantiated" }
                     return
                 }
@@ -50,31 +68,35 @@ data class KafkaDispatcher(
                 val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
                 val record: ProducerRecord<Any, Any> =
                     ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
-
                 try {
-                    if (!brokerConfig.allowAsync) {
-                        // Send synchronously
-                        producer?.send(record)?.get()
-                        logger.info { "Kafka Broker => Broker name: ${name()} => Message sent synchronously to topic: $topic" }
-                    } else {
-                        // Send asynchronously and handle the callback at a later time
-                        producer?.send(record) { metadata, exception ->
-                            if (exception != null) {
-                                logger.error(exception) {
-                                    "Kafka Broker => Broker name: ${name()} => Error sending message to topic: $topic"
-                                }
-                            } else {
-                                logger.info {
-                                    "Kafka Broker => Broker name: ${name()} => Message sent asynchronously to topic: $topic, " +
-                                            "partition: ${metadata.partition()}, offset: ${metadata.offset()}"
+                    val runnable = Runnable {
+                        if (!producerConfig.allowAsync) {
+                            messageProducer?.send(record)?.get()
+                            logger.info { "Kafka Broker => Broker name: ${name()} => Message sent synchronously to topic: $topic" }
+                        } else {
+                            messageProducer?.send(record) { metadata, exception ->
+                                if (exception != null) {
+                                    errorCounter?.increment()
+                                    logger.error(exception) {
+                                        "Kafka Broker => Broker name: ${name()} => Error sending message to topic: $topic"
+                                    }
+                                } else {
+                                    logger.info {
+                                        "Kafka Broker => Broker name: ${name()} => Message sent asynchronously to topic: $topic, " +
+                                                "partition: ${metadata.partition()}, offset: ${metadata.offset()}"
+                                    }
                                 }
                             }
                         }
                     }
+                    // Use the timer to measure the time taken for the send operation, else fire the runnable directly
+                    sendTimer?.record(runnable) ?: runnable.run()
                 } catch (e: Exception) {
+                    errorCounter?.increment()
                     logger.error(e) { "Kafka Broker => Broker name: ${name()} => Error sending message to topic: $topic" }
                     this.updateConnectionState(MessageDispatcherState.Error(e))
                 }
+
             }
         }
     }
@@ -84,28 +106,28 @@ data class KafkaDispatcher(
             this.updateConnectionState(MessageDispatcherState.Building)
             val properties = Properties()
             properties.apply {
-                put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAuthConfig.bootstrapServers)
+                put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, connectionConfig.bootstrapServers)
                 put(
                     ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, SerializerFactory.fromFormat(
-                        producerConfig.keySerializationFormat,
+                        producer.keySerializationFormat,
                         requiresSchemaRegistry
                     )
                 )
                 put(
                     ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                    SerializerFactory.fromFormat(producerConfig.valueSerializationFormat, requiresSchemaRegistry)
+                    SerializerFactory.fromFormat(producer.valueSerializationFormat, requiresSchemaRegistry)
                 )
-                put(ProducerConfig.ACKS_CONFIG, brokerConfig.acks)
-                put(ProducerConfig.RETRIES_CONFIG, brokerConfig.retries)
-                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, brokerConfig.requestTimeoutMs)
-                put(ProducerConfig.BATCH_SIZE_CONFIG, brokerConfig.batchSize)
-                put(ProducerConfig.LINGER_MS_CONFIG, brokerConfig.lingerMs)
-                put(ProducerConfig.COMPRESSION_TYPE_CONFIG, brokerConfig.compressionType.type)
+                put(ProducerConfig.ACKS_CONFIG, producerConfig.acks)
+                put(ProducerConfig.RETRIES_CONFIG, producerConfig.retries)
+                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, producerConfig.requestTimeoutMs)
+                put(ProducerConfig.BATCH_SIZE_CONFIG, producerConfig.batchSize)
+                put(ProducerConfig.LINGER_MS_CONFIG, producerConfig.lingerMs)
+                put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerConfig.compressionType.type)
             }
 
             properties.apply {
                 if (requiresSchemaRegistry) {
-                    put("schema.registry.url", brokerAuthConfig.schemaRegistryUrl)
+                    put("schema.registry.url", connectionConfig.schemaRegistryUrl)
                     put("specific.avro.reader", true)
                     return@apply
                 }
@@ -113,7 +135,7 @@ data class KafkaDispatcher(
                 put("specific.avro.reader", false)
             }
 
-            producer = KafkaProducer(properties)
+            messageProducer = KafkaProducer(properties)
             testConnection()
         }
     }
@@ -121,7 +143,7 @@ data class KafkaDispatcher(
     override fun testConnection() {
         try {
             val adminProps = Properties().apply {
-                put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAuthConfig.bootstrapServers)
+                put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, connectionConfig.bootstrapServers)
             }
             AdminClient.create(adminProps).use { adminClient ->
                 adminClient.listTopics().names().get()
@@ -135,20 +157,20 @@ data class KafkaDispatcher(
     }
 
     override fun validate() {
-        if (brokerAuthConfig.bootstrapServers.isNullOrEmpty()) {
+        if (connectionConfig.bootstrapServers.isNullOrEmpty()) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Bootstrap servers cannot be null or empty")
         }
-        if (brokerConfig.acks.isEmpty()) {
+        if (producerConfig.acks.isEmpty()) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Acks cannot be null or empty")
         }
-        if (brokerConfig.retries < 0) {
+        if (producerConfig.retries < 0) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Retries cannot be less than 0")
         }
-        if (brokerConfig.requestTimeoutMs <= 0) {
+        if (producerConfig.requestTimeoutMs <= 0) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Request timeout must be greater than 0")
         }
 
-        if (this.requiresSchemaRegistry && brokerAuthConfig.schemaRegistryUrl.isNullOrEmpty()) {
+        if (this.requiresSchemaRegistry && connectionConfig.schemaRegistryUrl.isNullOrEmpty()) {
             throw IllegalArgumentException("Kafka Broker => Broker name: ${name()} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
@@ -156,20 +178,20 @@ data class KafkaDispatcher(
     override fun close() {
         synchronized(lock) {
             try {
-                producer?.flush()
-                producer?.close()
+                messageProducer?.flush()
+                messageProducer?.close()
                 logger.info { "Kafka Broker => Broker name: ${name()} => Producer closed successfully" }
                 this.updateConnectionState(MessageDispatcherState.Disconnected)
             } catch (e: Exception) {
                 logger.error(e) { "Kafka Broker => Broker name: ${name()} => Error closing producer" }
             } finally {
-                producer = null
+                messageProducer = null
             }
         }
     }
 
     private fun name(): String {
-        return producerConfig.producerName
+        return producer.producerName
     }
 
     /**
@@ -177,9 +199,9 @@ data class KafkaDispatcher(
      * Or if a Schema Registry URL is provided (Ie. For JSON Schemas)
      */
     private val requiresSchemaRegistry: Boolean
-        get() = brokerConfig.enableSchemaRegistry &&
-                (producerConfig.valueSerializationFormat == Broker.ProducerFormat.AVRO ||
-                        producerConfig.keySerializationFormat == Broker.ProducerFormat.AVRO ||
-                        producerConfig.valueSerializationFormat == Broker.ProducerFormat.JSON ||
-                        producerConfig.keySerializationFormat == Broker.ProducerFormat.JSON)
+        get() = producerConfig.enableSchemaRegistry &&
+                (producer.valueSerializationFormat == Broker.ProducerFormat.AVRO ||
+                        producer.keySerializationFormat == Broker.ProducerFormat.AVRO ||
+                        producer.valueSerializationFormat == Broker.ProducerFormat.JSON ||
+                        producer.keySerializationFormat == Broker.ProducerFormat.JSON)
 }

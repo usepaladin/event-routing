@@ -12,9 +12,9 @@ import java.io.Serializable
 
 abstract class MessageDispatcher : Serializable, AutoCloseable {
     abstract val schemaService: SchemaService
-    abstract val producerConfig: MessageProducer
-    abstract val brokerConfig: ProducerConfig
-    abstract val brokerAuthConfig: EncryptedProducerConfig
+    abstract val producer: MessageProducer
+    abstract val producerConfig: ProducerConfig
+    abstract val connectionConfig: EncryptedProducerConfig
     abstract val logger: KLogger
     abstract val meterRegistry: MeterRegistry?
 
