@@ -7,8 +7,8 @@ data class DispatchTopicRequest(
     val dispatcher: String,
     val sourceTopic: String,
     val destinationTopic: String,
-    val key: Broker.BrokerFormat,
+    val key: Broker.ProducerFormat,
     val keySchema: String? = null,
-    val value: Broker.BrokerFormat,
+    val value: Broker.ProducerFormat,
     val valueSchema: String? = null
 ) : Serializable

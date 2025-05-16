@@ -2,12 +2,12 @@ package paladin.router.services.dispatch
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Bean
@@ -17,14 +17,18 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
+import paladin.router.enums.configuration.Broker
+import paladin.router.services.brokers.BrokerService
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import util.TestLogAppender
 import util.kafka.KafkaClusterManager
+import util.kafka.TestKafkaProducerFactory
 import util.rabbit.RabbitClusterManager
 import util.sqs.SqsClusterManager
 import java.time.Duration
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -37,6 +41,12 @@ class DispatchIntegrationTest {
     private lateinit var testAppender: TestLogAppender
     private var logger: KLogger = KotlinLogging.logger {}
     private lateinit var logbackLogger: Logger
+
+    @Autowired
+    private lateinit var brokerService: BrokerService
+
+    @Autowired
+    private lateinit var dispatchService: DispatchService
 
     @BeforeEach
     fun setup() {
@@ -62,7 +72,7 @@ class DispatchIntegrationTest {
 
         @BeforeAll
         @JvmStatic
-        fun setup() {
+        fun setupClusters() {
             // Setup code here
             kafkaClusterManager.init(KAFKA_CLUSTER_1, includeSchemaRegistry = true)
             kafkaClusterManager.init(KAFKA_CLUSTER_2, includeSchemaRegistry = false)
@@ -72,7 +82,7 @@ class DispatchIntegrationTest {
 
         @AfterAll
         @JvmStatic
-        fun tearDown() {
+        fun shutdownClusters() {
             // Teardown code here
             kafkaClusterManager.cleanupAll()
             sqsClusterManager.cleanupAll()
@@ -111,11 +121,21 @@ class DispatchIntegrationTest {
         // Kafka templates
         @Bean(name = ["kafkaCluster1Template"])
         fun kafkaCluster1Template(): KafkaTemplate<String, String> {
-
+            return TestKafkaProducerFactory.createKafkaTemplate(
+                kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container,
+                Broker.ProducerFormat.STRING,
+                Broker.ProducerFormat.STRING,
+                kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).schemaRegistryContainer?.schemaRegistryUrl
+            )
         }
 
         @Bean(name = ["kafkaCluster2Template"])
         fun kafkaCluster2Template(): KafkaTemplate<String, String> {
+            return TestKafkaProducerFactory.createKafkaTemplate(
+                kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).container,
+                Broker.ProducerFormat.STRING,
+                Broker.ProducerFormat.STRING
+            )
         }
     }
 
@@ -135,21 +155,8 @@ class DispatchIntegrationTest {
         // Create SQS queues
         val sqsQueue1 = sqsClusterManager.createQueue(SQS_CLUSTER_1, sqsTopic1)
         val rabbitQueue1 = rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, rabbitTopic1)
-        val kafkaConsumer1 = kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, kafkaTopic1)
-        val kafkaConsumer2 = kafkaClusterManager.createTopic(KAFKA_CLUSTER_2, kafkaTopic2)
-
-        // Register Kafka schemas
-        val schema = """
-            {
-                "type": "record",
-                "name": "Test",
-                "fields": [{"name": "value", "type": "string"}]
-            }
-        """
-        kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).schemaRegistryClient?.register(
-            "kafka-test-topic-key",
-            AvroSchema(schema)
-        )
+        kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, kafkaTopic1)
+        kafkaClusterManager.createTopic(KAFKA_CLUSTER_2, kafkaTopic2)
 
         // Send messages to SQS
         val sqsMessage1 = "SQS Message for Cluster 1"
@@ -184,16 +191,15 @@ class DispatchIntegrationTest {
 
         // Receive messages from Kafka
         val consumerProps1 = mapOf(
-            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).client.describeCluster()
-                .controller().get().host(),
+            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
+
             "group.id" to "test-group-1",
             "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
             "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
             "auto.offset.reset" to "earliest"
         )
         val consumerProps2 = mapOf(
-            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).client.describeCluster()
-                .controller().get().host(),
+            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).container.bootstrapServers,
             "group.id" to "test-group-2",
             "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
             "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
@@ -228,9 +234,36 @@ class DispatchIntegrationTest {
             assert(it.count() == 1)
             assertEquals(it.first().value(), kafkaMessage2)
         }
-        
+
         // Clean up Kafka consumers
         consumer1.close()
         consumer2.close()
+    }
+
+    @Test
+    fun `handle dispatch to multiple receiver brokers`(
+        @Qualifier("sqsCluster1Client") sqsCluster1Client: SqsClient,
+        @Qualifier("rabbitmqCluster1Template") rabbitmqCluster1Template: RabbitTemplate,
+        @Qualifier("kafkaCluster1Template") kafkaCluster1Template: KafkaTemplate<String, String>,
+        @Qualifier("kafkaCluster2Template") kafkaCluster2Template: KafkaTemplate<String, String>
+    ) {
+        val sourceTopic: String = "test-topic-${UUID.randomUUID()}"
+
+        val (sqsTopic1, sqsQueue1) = "sqs-test-topic-${UUID.randomUUID()}".let {
+            Pair(it, sqsClusterManager.createQueue(SQS_CLUSTER_1, it))
+        }
+        val (rabbitTopic1, rabbitQueue1) = "rabbit-test-topic-${UUID.randomUUID()}".let {
+            Pair(it, rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, it))
+        }
+        val kafkaTopic1 = "kafka-test-topic-${UUID.randomUUID()}".also {
+            kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, it)
+        }
+
+        val kafkaTopic2 = "kafka-test-topic-${UUID.randomUUID()}".also {
+            kafkaClusterManager.createTopic(KAFKA_CLUSTER_2, it)
+        }
+
+        // Set up Dispatchers
+        // Mock an Event Listener
     }
 }

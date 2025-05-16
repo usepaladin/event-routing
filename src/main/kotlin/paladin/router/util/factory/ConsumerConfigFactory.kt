@@ -19,7 +19,7 @@ object ConsumerConfigFactory {
         val valueDeserializer = generateDeserializer(eventListener.value, eventListener.config.schemaRegistryUrl)
 
         // Assert Schema registry exists if Avro is used, otherwise throw
-        if (eventListener.config.schemaRegistryUrl.isNullOrEmpty() && (eventListener.value == Broker.BrokerFormat.AVRO || eventListener.key == Broker.BrokerFormat.AVRO)) {
+        if (eventListener.config.schemaRegistryUrl.isNullOrEmpty() && (eventListener.value == Broker.ProducerFormat.AVRO || eventListener.key == Broker.ProducerFormat.AVRO)) {
             throw IllegalArgumentException("Schema Registry URL is required for AVRO format")
         }
 
@@ -27,7 +27,7 @@ object ConsumerConfigFactory {
             config["schema.registry.url"] = it
             config["specific.avro.reader"] = true
         }
-        
+
         applyConfigIfExist(
             config,
             listOf(
@@ -59,13 +59,13 @@ object ConsumerConfigFactory {
      * Creates a deserializer instance for the specified format with error handling wrapped around it
      */
     private fun generateDeserializer(
-        format: Broker.BrokerFormat,
+        format: Broker.ProducerFormat,
         schemaRegistryUrl: String? = null,
         isKey: Boolean = false
     ): ErrorHandlingDeserializer<*> {
         val baseDeserializer = when (format) {
-            Broker.BrokerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
-            Broker.BrokerFormat.JSON -> {
+            Broker.ProducerFormat.STRING -> org.apache.kafka.common.serialization.StringDeserializer()
+            Broker.ProducerFormat.JSON -> {
                 schemaRegistryUrl.let {
                     if (it.isNullOrEmpty()) return@let io.confluent.kafka.serializers.KafkaJsonDeserializer<Any>()
                     // If schema registry URL is provided, use KafkaJsonDeserializer
@@ -80,7 +80,7 @@ object ConsumerConfigFactory {
                 }
             }
 
-            Broker.BrokerFormat.AVRO -> {
+            Broker.ProducerFormat.AVRO -> {
                 // Check if schema registry URL is provided
                 schemaRegistryUrl.let {
                     if (it.isNullOrEmpty()) {

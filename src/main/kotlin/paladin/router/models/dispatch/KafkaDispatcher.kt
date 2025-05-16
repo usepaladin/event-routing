@@ -7,39 +7,45 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import paladin.router.enums.configuration.Broker
-import paladin.router.models.configuration.brokers.MessageBroker
+import paladin.router.models.configuration.brokers.MessageProducer
 import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
+import paladin.router.models.configuration.brokers.core.KafkaProducerConfig
 import paladin.router.services.schema.SchemaService
 import paladin.router.util.factory.SerializerFactory
 import java.util.*
 
 
 data class KafkaDispatcher(
-    override val broker: MessageBroker,
-    override val config: KafkaBrokerConfig,
+    override val broker: MessageProducer,
+    override val config: KafkaProducerConfig,
     override val authConfig: KafkaEncryptedConfig,
     override val schemaService: SchemaService
 ) : MessageDispatcher() {
     private var producer: KafkaProducer<Any, Any>? = null
     override val logger: KLogger = KotlinLogging.logger {}
 
+    override fun <V> dispatch(payload: V, topic: DispatchTopic) {
+        TODO("Not yet implemented")
+    }
+
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
-        if (producer == null) {
-            logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
-            return
-        }
+        producer.let {
+            if (it == null) {
+                logger.error { "Kafka Broker => Broker name: ${broker.brokerName} => Unable to send message => Producer has not been instantiated" }
+                return
+            }
 
-        val dispatchKey = convertToFormat(key, topic.key, topic.keySchema)
-        val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
-        val record: ProducerRecord<Any, Any> = ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
-        try {
-            producer?.send(record)?.get()
-            logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
-        } catch (e: Exception) {
-            logger.error(e) { "Kafka Broker => Broker name: ${broker.brokerName} => Error sending message to topic: $topic" }
-        }
+            val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
+            val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+            val record: ProducerRecord<Any, Any> = ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
 
+            try {
+                it.send(record)?.get()
+                logger.info { "Kafka Broker => Broker name: ${broker.brokerName} => Message sent successfully to topic: $topic" }
+            } catch (e: Exception) {
+                logger.error(e) { "Kafka Broker => Broker name: ${broker.brokerName} => Error sending message to topic: $topic" }
+            }
+        }
     }
 
     override fun build() {
@@ -111,36 +117,6 @@ data class KafkaDispatcher(
      * Or if a Schema Registry URL is provided (Ie. For JSON Schemas)
      */
     private val requiresSchemaRegistry =
-        (broker.valueSerializationFormat == Broker.BrokerFormat.AVRO || broker.keySerializationFormat == Broker.BrokerFormat.AVRO) || !this.authConfig.schemaRegistryUrl.isNullOrEmpty()
+        (broker.valueSerializationFormat == Broker.ProducerFormat.AVRO || broker.keySerializationFormat == Broker.ProducerFormat.AVRO) || !this.authConfig.schemaRegistryUrl.isNullOrEmpty()
 
-
-    /**
-     * Converts a payload to the appropriate format based on the topic's serialisation technique
-     * Also utilises any provided schema to parse the message (When using Json or Avro)
-     *
-     * @param payload The value being transformed
-     * @param format The format of the payload
-     * @param schema Any associated schema to validate and transform the payload into a specific format
-     *
-     * @return A transformed value
-     */
-    private fun <T> convertToFormat(payload: T, format: Broker.BrokerFormat, schema: String?): Any {
-        return when (format) {
-            Broker.BrokerFormat.STRING -> schemaService.parseToString(payload)
-            Broker.BrokerFormat.JSON -> {
-                if (schema == null) {
-                    return schemaService.parseToJson(payload)
-
-                }
-                return schemaService.parseToJson(schema, payload)
-            }
-
-            Broker.BrokerFormat.AVRO -> {
-                if (schema == null) {
-                    throw IllegalArgumentException("Schema cannot be null for Avro format")
-                }
-                return schemaService.parseToAvro(schema, payload)
-            }
-        }
-    }
 }

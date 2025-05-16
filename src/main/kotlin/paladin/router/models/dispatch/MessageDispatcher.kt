@@ -3,17 +3,17 @@ package paladin.router.models.dispatch
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.MessageProducer
+import paladin.router.models.configuration.brokers.auth.EncryptedProducerConfig
+import paladin.router.models.configuration.brokers.core.ProducerConfig
 import paladin.router.services.schema.SchemaService
 import java.io.Serializable
 
 abstract class MessageDispatcher : Serializable {
     abstract val schemaService: SchemaService
-    abstract val broker: MessageBroker
-    abstract val config: BrokerConfig
-    abstract val authConfig: EncryptedBrokerConfig
+    abstract val broker: MessageProducer
+    abstract val config: ProducerConfig
+    abstract val authConfig: EncryptedProducerConfig
     abstract val logger: KLogger
 
     private val _connectionState = MutableStateFlow<MessageDispatcherState>(MessageDispatcherState.Disconnected)
@@ -28,6 +28,8 @@ abstract class MessageDispatcher : Serializable {
     fun updateConnectionState(state: MessageDispatcherState) {
         _connectionState.value = state
     }
+
+    abstract fun <V> dispatch(payload: V, topic: DispatchTopic)
 
     /**
      * Uses the provided broker to dispatch a message to the appropriate destination within the brokers reach.

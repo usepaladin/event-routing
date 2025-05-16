@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import paladin.router.dto.BrokerDTO
 import paladin.router.dto.MessageDispatchDTO
-import paladin.router.models.configuration.brokers.BrokerCreationRequest
+import paladin.router.models.configuration.brokers.ProducerCreationRequest
 import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.brokers.BrokerService
 
@@ -15,7 +15,7 @@ class BrokerConfigurationController(
     private val brokerService: BrokerService
 ) {
     @PostMapping("/")
-    fun createBroker(@RequestBody broker: BrokerCreationRequest): ResponseEntity<MessageDispatchDTO> {
+    fun createBroker(@RequestBody broker: ProducerCreationRequest): ResponseEntity<MessageDispatchDTO> {
         val createdBroker: MessageDispatcher = brokerService.createBroker(broker)
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageDispatchDTO.fromEntity(createdBroker))
     }

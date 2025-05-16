@@ -10,6 +10,7 @@ import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.specific.SpecificRecord
 import org.springframework.stereotype.Service
+import paladin.router.enums.configuration.Broker
 import java.io.IOException
 
 @Service
@@ -17,6 +18,36 @@ class SchemaService(
     private val objectMapper: ObjectMapper,
     private val logger: KLogger
 ) {
+
+    /**
+     * Converts a payload to the appropriate format based on the topic's serialisation technique
+     * Also utilises any provided schema to parse the message (When using Json or Avro)
+     *
+     * @param payload The value being transformed
+     * @param format The format of the payload
+     * @param schema Any associated schema to validate and transform the payload into a specific format
+     *
+     * @return A transformed value
+     */
+    fun <T> convertToFormat(payload: T, format: Broker.ProducerFormat, schema: String?): Any {
+        return when (format) {
+            Broker.ProducerFormat.STRING -> parseToString(payload)
+            Broker.ProducerFormat.JSON -> {
+                if (schema == null) {
+                    return parseToJson(payload)
+
+                }
+                return parseToJson(schema, payload)
+            }
+
+            Broker.ProducerFormat.AVRO -> {
+                if (schema == null) {
+                    throw IllegalArgumentException("Schema cannot be null for Avro format")
+                }
+                return parseToAvro(schema, payload)
+            }
+        }
+    }
 
 
     /**

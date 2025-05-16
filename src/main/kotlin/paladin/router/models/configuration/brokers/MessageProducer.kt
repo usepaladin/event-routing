@@ -7,18 +7,18 @@ import paladin.router.util.Configurable
 import java.time.ZonedDateTime
 import java.util.*
 
-data class MessageBroker(
+data class MessageProducer(
     val id: UUID,
     val brokerName: String,
     val brokerType: Broker.BrokerType,
-    val valueSerializationFormat: Broker.BrokerFormat,
-    val keySerializationFormat: Broker.BrokerFormat?,
+    val valueSerializationFormat: Broker.ProducerFormat,
+    val keySerializationFormat: Broker.ProducerFormat?,
     var defaultBroker: Boolean,
     val createdAt: ZonedDateTime,
     var updatedAt: ZonedDateTime
-): Configurable {
+) : Configurable {
     override fun updateConfiguration(config: Configurable): Configurable {
-        if (config is MessageBroker) {
+        if (config is MessageProducer) {
             this.defaultBroker = config.defaultBroker
             this.updatedAt = ZonedDateTime.now()
         }
@@ -26,8 +26,8 @@ data class MessageBroker(
     }
 
     companion object Factory {
-        fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageBroker {
-            return MessageBroker(
+        fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageProducer {
+            return MessageProducer(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
                 brokerName = entity.brokerName,
                 brokerType = entity.brokerType,

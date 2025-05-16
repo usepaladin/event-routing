@@ -27,14 +27,14 @@ data class DispatchTopicConfigurationEntity(
 
     @Column(name = "key_format", nullable = true)
     @Enumerated(EnumType.STRING)
-    val keyFormat: Broker.BrokerFormat? = null,
+    val keyFormat: Broker.ProducerFormat? = null,
 
     @Column(name = "key_schema", nullable = true)
     val keySchema: String? = null,
 
     @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
-    val valueFormat: Broker.BrokerFormat,
+    val valueFormat: Broker.ProducerFormat,
 
     @Column(name = "value_schema", nullable = true)
     val valueSchema: String? = null

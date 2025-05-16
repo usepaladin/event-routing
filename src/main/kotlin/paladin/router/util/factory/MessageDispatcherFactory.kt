@@ -1,28 +1,28 @@
 package paladin.router.util.factory
 
 import org.springframework.stereotype.Component
-import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
+import paladin.router.models.configuration.brokers.MessageProducer
+import paladin.router.models.configuration.brokers.auth.EncryptedProducerConfig
 import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
 import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
 import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
-import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
-import paladin.router.models.configuration.brokers.core.RabbitBrokerConfig
-import paladin.router.models.configuration.brokers.core.SQSBrokerConfig
+import paladin.router.models.configuration.brokers.core.KafkaProducerConfig
+import paladin.router.models.configuration.brokers.core.RabbitProducerConfig
+import paladin.router.models.configuration.brokers.core.SQSProducerConfig
 import paladin.router.models.dispatch.*
-import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.brokers.core.ProducerConfig
 import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.schema.SchemaService
 
 @Component
 class MessageDispatcherFactory(private val schemaService: SchemaService) {
     fun fromBrokerConfig(
-        broker: MessageBroker,
-        config: BrokerConfig,
-        authConfig: EncryptedBrokerConfig
+        broker: MessageProducer,
+        config: ProducerConfig,
+        authConfig: EncryptedProducerConfig
     ): MessageDispatcher {
         return when {
-            config is KafkaBrokerConfig && authConfig is KafkaEncryptedConfig -> {
+            config is KafkaProducerConfig && authConfig is KafkaEncryptedConfig -> {
                 KafkaDispatcher(
                     broker = broker,
                     config = config,
@@ -31,7 +31,7 @@ class MessageDispatcherFactory(private val schemaService: SchemaService) {
                 )
             }
 
-            config is RabbitBrokerConfig && authConfig is RabbitEncryptedConfig -> {
+            config is RabbitProducerConfig && authConfig is RabbitEncryptedConfig -> {
                 RabbitDispatcher(
                     broker = broker,
                     config = config,
@@ -40,7 +40,7 @@ class MessageDispatcherFactory(private val schemaService: SchemaService) {
                 )
             }
 
-            config is SQSBrokerConfig && authConfig is SQSEncryptedConfig -> {
+            config is SQSProducerConfig && authConfig is SQSEncryptedConfig -> {
                 SQSDispatcher(
                     broker = broker,
                     config = config,

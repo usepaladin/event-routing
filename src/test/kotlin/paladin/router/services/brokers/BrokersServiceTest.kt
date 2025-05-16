@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
-import paladin.router.repository.MessageBrokerRepository
+import paladin.router.repository.MessageProducerRepository
 import paladin.router.services.dispatch.DispatchService
 import paladin.router.services.encryption.EncryptionService
 import paladin.router.util.factory.MessageDispatcherFactory
@@ -20,7 +20,7 @@ class BrokersServiceTest {
     private lateinit var logger: KLogger
 
     @MockK
-    private lateinit var repository: MessageBrokerRepository
+    private lateinit var repository: MessageProducerRepository
 
     @MockK
     private lateinit var dispatchService: DispatchService

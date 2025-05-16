@@ -12,7 +12,7 @@ data class KafkaEncryptedConfig(
     var sslTruststorePassword: String? = null,
     var sslKeystoreLocation: String? = null,
     var sslKeystorePassword: String? = null
-) : EncryptedBrokerConfig {
+) : EncryptedProducerConfig {
     override fun updateConfiguration(config: Configurable): KafkaEncryptedConfig {
         if (config is KafkaEncryptedConfig) {
             this.bootstrapServers = config.bootstrapServers

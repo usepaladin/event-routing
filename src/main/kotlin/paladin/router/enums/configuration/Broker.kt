@@ -7,7 +7,7 @@ class Broker {
         SQS,
     }
 
-    enum class BrokerFormat {
+    enum class ProducerFormat {
         STRING,
         JSON,
         AVRO,

@@ -6,8 +6,8 @@ import paladin.router.models.listener.EventListener
 data class EventListenerDTO(
     val topic: String,
     val groupId: String,
-    val key: Broker.BrokerFormat,
-    val value: Broker.BrokerFormat,
+    val key: Broker.ProducerFormat,
+    val value: Broker.ProducerFormat,
     val dispatchers: List<MessageDispatchDTO> = emptyList(),
 ) {
     companion object Factory {

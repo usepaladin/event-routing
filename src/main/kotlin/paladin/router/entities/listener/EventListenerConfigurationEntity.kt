@@ -38,11 +38,11 @@ data class EventListenerConfigurationEntity(
 
     @Column(name = "key_format", nullable = false)
     @Enumerated(EnumType.STRING)
-    val keyFormat: Broker.BrokerFormat,
+    val keyFormat: Broker.ProducerFormat,
 
     @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
-    val valueFormat: Broker.BrokerFormat,
+    val valueFormat: Broker.ProducerFormat,
 
     @Type(JsonBinaryType::class)
     @Column(name = "additional_properties", columnDefinition = "jsonb")

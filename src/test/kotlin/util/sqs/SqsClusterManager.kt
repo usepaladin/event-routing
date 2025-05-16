@@ -3,6 +3,9 @@ package util.sqs
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest
 import software.amazon.awssdk.services.sqs.model.DeleteQueueRequest
@@ -23,6 +26,12 @@ class SqsClusterManager {
 
         val sqsClient = SqsClient.builder()
             .endpointOverride(container.endpoint)
+            .region(Region.US_EAST_1) // Explicitly set the region
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create("test", "test") // Set dummy credentials for LocalStack
+                )
+            )
             .build()
 
         return MessageBrokerCluster(container, sqsClient).also {
@@ -41,7 +50,7 @@ class SqsClusterManager {
         registry.add("$propertyPrefix.endpoint") { config.container.endpoint.toString() }
         registry.add("$propertyPrefix.credentials.access-key") { "test" }
         registry.add("$propertyPrefix.credentials.secret-key") { "test" }
-        registry.add("$propertyPrefix.region.static") { config.container.region }
+        registry.add("$propertyPrefix.region.static") { "us-east-1" }
 
     }
 
@@ -64,7 +73,7 @@ class SqsClusterManager {
     }
 
     // Clean up a specific cluster
-    fun cleanup(clusterId: String) {
+    private fun cleanup(clusterId: String) {
         val config = clusters.remove(clusterId) ?: return
         config.boostrapUrls.forEach { url ->
             config.client.deleteQueue(DeleteQueueRequest.builder().queueUrl(url).build())

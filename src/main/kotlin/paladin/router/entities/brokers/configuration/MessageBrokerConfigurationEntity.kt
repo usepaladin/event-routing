@@ -8,9 +8,9 @@ import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker.BrokerType
-import paladin.router.enums.configuration.Broker.BrokerFormat
-import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.enums.configuration.Broker.ProducerFormat
+import paladin.router.models.configuration.brokers.MessageProducer
+import paladin.router.models.configuration.brokers.core.ProducerConfig
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -59,11 +59,11 @@ data class MessageBrokerConfigurationEntity(
 
     @Column(name = "key_format", nullable = true)
     @Enumerated(EnumType.STRING)
-    val keyFormat: BrokerFormat?,
+    val keyFormat: ProducerFormat?,
 
     @Column(name = "value_format", nullable = false)
     @Enumerated(EnumType.STRING)
-    val valueFormat: BrokerFormat,
+    val valueFormat: ProducerFormat,
 
     @JsonIgnore
     @Column(name = "enc_broker_config", nullable = false)
@@ -81,12 +81,12 @@ data class MessageBrokerConfigurationEntity(
 
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     var updatedAt: ZonedDateTime = ZonedDateTime.now()
-){
+) {
     constructor(
         brokerName: String,
         brokerType: BrokerType,
-        keyFormat: BrokerFormat?,
-        valueFormat: BrokerFormat,
+        keyFormat: ProducerFormat?,
+        valueFormat: ProducerFormat,
         brokerConfigEncrypted: String,
         brokerConfig: Map<String, Any>,
         defaultBroker: Boolean = false
@@ -101,8 +101,12 @@ data class MessageBrokerConfigurationEntity(
         defaultBroker
     )
 
-    companion object Factory{
-        fun fromConfiguration(messageBroker: MessageBroker, encryptedConfig: String, brokerConfig: BrokerConfig): MessageBrokerConfigurationEntity {
+    companion object Factory {
+        fun fromConfiguration(
+            messageBroker: MessageProducer,
+            encryptedConfig: String,
+            producerConfig: ProducerConfig
+        ): MessageBrokerConfigurationEntity {
             val objectMapper = ObjectMapper()
 
             return MessageBrokerConfigurationEntity(
@@ -112,7 +116,7 @@ data class MessageBrokerConfigurationEntity(
                 keyFormat = messageBroker.keySerializationFormat,
                 valueFormat = messageBroker.valueSerializationFormat,
                 brokerConfigEncrypted = encryptedConfig,
-                brokerConfig = objectMapper.convertValue(brokerConfig),
+                brokerConfig = objectMapper.convertValue(producerConfig),
                 defaultBroker = messageBroker.defaultBroker,
                 createdAt = messageBroker.createdAt,
                 updatedAt = messageBroker.updatedAt

@@ -1,4 +1,4 @@
-package paladin.router.enums.configuration.SQS
+package paladin.router.enums.configuration.sqs
 
 enum class Region(val region: String) {
     US_EAST_1("us-east-1"),

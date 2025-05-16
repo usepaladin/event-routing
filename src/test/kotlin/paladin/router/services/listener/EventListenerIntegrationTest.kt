@@ -128,8 +128,8 @@ class EventListenerIntegrationTest {
             spiedDispatchService,
             topic,
             groupId,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.STRING
         )
 
         coEvery {
@@ -140,8 +140,8 @@ class EventListenerIntegrationTest {
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
             kafka,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.STRING
         )
 
         assertNotNull(listener.id, "Listener ID should be set after registration")
@@ -188,8 +188,8 @@ class EventListenerIntegrationTest {
             spiedDispatchService,
             topic,
             groupId,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.STRING
         )
 
         coEvery {
@@ -200,8 +200,8 @@ class EventListenerIntegrationTest {
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, String>(
             kafka,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.STRING
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.STRING
         )
 
 
@@ -271,8 +271,8 @@ class EventListenerIntegrationTest {
             spiedDispatchService,
             topic,
             groupId,
-            Broker.BrokerFormat.AVRO,
-            Broker.BrokerFormat.AVRO,
+            Broker.ProducerFormat.AVRO,
+            Broker.ProducerFormat.AVRO,
             config
         )
 
@@ -284,8 +284,8 @@ class EventListenerIntegrationTest {
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<SpecificRecord, SpecificRecord>(
             kafka,
-            Broker.BrokerFormat.AVRO,
-            Broker.BrokerFormat.AVRO,
+            Broker.ProducerFormat.AVRO,
+            Broker.ProducerFormat.AVRO,
             schemaRegistry.schemaRegistryUrl
         )
 
@@ -348,8 +348,8 @@ class EventListenerIntegrationTest {
             spiedDispatchService,
             topic,
             groupId,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.AVRO,
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.AVRO,
             config
         )
 
@@ -361,8 +361,8 @@ class EventListenerIntegrationTest {
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<String, SpecificRecord>(
             kafka,
-            Broker.BrokerFormat.STRING,
-            Broker.BrokerFormat.AVRO,
+            Broker.ProducerFormat.STRING,
+            Broker.ProducerFormat.AVRO,
             schemaRegistry.schemaRegistryUrl
         )
 
@@ -431,8 +431,8 @@ class EventListenerIntegrationTest {
             spiedDispatchService,
             topic,
             groupId,
-            Broker.BrokerFormat.JSON,
-            Broker.BrokerFormat.JSON,
+            Broker.ProducerFormat.JSON,
+            Broker.ProducerFormat.JSON,
             config
         )
 
@@ -444,8 +444,8 @@ class EventListenerIntegrationTest {
 
         val template = TestKafkaProducerFactory.createKafkaTemplate<Operation, User>(
             kafka,
-            Broker.BrokerFormat.JSON,
-            Broker.BrokerFormat.JSON,
+            Broker.ProducerFormat.JSON,
+            Broker.ProducerFormat.JSON,
             schemaRegistry.schemaRegistryUrl
         )
 
@@ -476,8 +476,8 @@ class EventListenerIntegrationTest {
         service: DispatchService,
         topic: String,
         groupId: String,
-        key: Broker.BrokerFormat,
-        value: Broker.BrokerFormat,
+        key: Broker.ProducerFormat,
+        value: Broker.ProducerFormat,
         config: AdditionalConsumerProperties? = null
     ): Pair<EventListenerRegistry, EventListener> {
         // Register EventListener

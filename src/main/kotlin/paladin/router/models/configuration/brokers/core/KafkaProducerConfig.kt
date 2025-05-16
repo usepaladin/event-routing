@@ -3,7 +3,7 @@ package paladin.router.models.configuration.brokers.core
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable
 
-data class KafkaBrokerConfig(
+data class KafkaProducerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.KAFKA,
     val clientId: String,
     val groupId: String?,
@@ -12,9 +12,9 @@ data class KafkaBrokerConfig(
     var requestTimeoutMs: Int = 30000,
     var retries: Int = 5,
     var acks: String = "all",
-) : BrokerConfig {
-    override fun updateConfiguration(config: Configurable): KafkaBrokerConfig {
-        if (config is KafkaBrokerConfig) {
+) : ProducerConfig {
+    override fun updateConfiguration(config: Configurable): KafkaProducerConfig {
+        if (config is KafkaProducerConfig) {
             this.enableAutoCommit = config.enableAutoCommit
             this.autoCommitIntervalMs = config.autoCommitIntervalMs
             this.requestTimeoutMs = config.requestTimeoutMs
