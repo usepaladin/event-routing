@@ -33,15 +33,13 @@ import java.util.*
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
 @Table(
-    name = "message_brokers",
+    name = "message_producers",
     schema = "event_routing",
     uniqueConstraints = [
-        UniqueConstraint(columnNames = ["broker_name"])
+        UniqueConstraint(columnNames = ["producer_name"])
     ],
     indexes = [
-        Index(name = "idx_message_brokers_binder_name", columnList = "broker_name"),
-
-
+        Index(name = "idx_message_producers_producer_name", columnList = "producer_name"),
     ]
 )
 data class MessageBrokerConfigurationEntity(
@@ -50,8 +48,8 @@ data class MessageBrokerConfigurationEntity(
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
     val id: UUID? = null,
 
-    @Column(name = "broker_name", nullable = false, unique = true)
-    var brokerName: String,
+    @Column(name = "producer_name", nullable = false, unique = true)
+    var producerName: String,
 
     @Column(name = "broker_type", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -66,15 +64,15 @@ data class MessageBrokerConfigurationEntity(
     val valueFormat: ProducerFormat,
 
     @JsonIgnore
-    @Column(name = "enc_broker_config", nullable = false)
-    var brokerConfigEncrypted: String,
+    @Column(name = "enc_producer_config", nullable = false)
+    var producerConfigEncrypted: String,
 
     @Type(JsonBinaryType::class)
-    @Column(name = "broker_config", nullable = false, columnDefinition = "JSONB")
+    @Column(name = "producer_config", nullable = false, columnDefinition = "JSONB")
     var brokerConfig: Map<String, Any>,
 
-    @Column(name = "default_broker")
-    var defaultBroker: Boolean = false,
+    @Column(name = "default_producer")
+    var defaultProducer: Boolean = false,
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP", updatable = false)
     var createdAt: ZonedDateTime = ZonedDateTime.now(),
@@ -82,45 +80,27 @@ data class MessageBrokerConfigurationEntity(
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     var updatedAt: ZonedDateTime = ZonedDateTime.now()
 ) {
-    constructor(
-        brokerName: String,
-        brokerType: BrokerType,
-        keyFormat: ProducerFormat?,
-        valueFormat: ProducerFormat,
-        brokerConfigEncrypted: String,
-        brokerConfig: Map<String, Any>,
-        defaultBroker: Boolean = false
-    ) : this(
-        null,
-        brokerName,
-        brokerType,
-        keyFormat,
-        valueFormat,
-        brokerConfigEncrypted,
-        brokerConfig,
-        defaultBroker
-    )
-
     companion object Factory {
         fun fromConfiguration(
-            messageBroker: MessageProducer,
+            messageProducer: MessageProducer,
             encryptedConfig: String,
             producerConfig: ProducerConfig
         ): MessageBrokerConfigurationEntity {
             val objectMapper = ObjectMapper()
-
-            return MessageBrokerConfigurationEntity(
-                id = messageBroker.id,
-                brokerName = messageBroker.brokerName,
-                brokerType = messageBroker.brokerType,
-                keyFormat = messageBroker.keySerializationFormat,
-                valueFormat = messageBroker.valueSerializationFormat,
-                brokerConfigEncrypted = encryptedConfig,
-                brokerConfig = objectMapper.convertValue(producerConfig),
-                defaultBroker = messageBroker.defaultBroker,
-                createdAt = messageBroker.createdAt,
-                updatedAt = messageBroker.updatedAt
-            )
+            messageProducer.let {
+                return MessageBrokerConfigurationEntity(
+                    id = it.id,
+                    producerName = it.brokerName,
+                    brokerType = it.brokerType,
+                    keyFormat = it.keySerializationFormat,
+                    valueFormat = it.valueSerializationFormat,
+                    producerConfigEncrypted = encryptedConfig,
+                    brokerConfig = objectMapper.convertValue(producerConfig),
+                    defaultProducer = it.defaultBroker,
+                    createdAt = it.createdAt,
+                    updatedAt = it.updatedAt
+                )
+            }
         }
     }
 }

@@ -9,17 +9,17 @@ import java.util.*
 
 data class MessageProducer(
     val id: UUID,
-    val brokerName: String,
+    val producerName: String,
     val brokerType: Broker.BrokerType,
     val valueSerializationFormat: Broker.ProducerFormat,
     val keySerializationFormat: Broker.ProducerFormat?,
-    var defaultBroker: Boolean,
+    var defaultProducer: Boolean,
     val createdAt: ZonedDateTime,
     var updatedAt: ZonedDateTime
 ) : Configurable {
-    override fun updateConfiguration(config: Configurable): Configurable {
+    override fun updateConfiguration(config: Configurable): MessageProducer {
         if (config is MessageProducer) {
-            this.defaultBroker = config.defaultBroker
+            this.defaultProducer = config.defaultProducer
             this.updatedAt = ZonedDateTime.now()
         }
         return this
@@ -29,11 +29,11 @@ data class MessageProducer(
         fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageProducer {
             return MessageProducer(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
-                brokerName = entity.brokerName,
+                producerName = entity.producerName,
                 brokerType = entity.brokerType,
                 keySerializationFormat = entity.keyFormat,
                 valueSerializationFormat = entity.valueFormat,
-                defaultBroker = entity.defaultBroker,
+                defaultProducer = entity.defaultProducer,
                 createdAt = entity.createdAt,
                 updatedAt = entity.updatedAt
             )
