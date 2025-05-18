@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*
 import paladin.router.dto.MessageDispatchDTO
 import paladin.router.models.configuration.producers.ProducerCreationRequest
 import paladin.router.models.dispatch.MessageDispatcher
-import paladin.router.services.brokers.ProducerService
+import paladin.router.services.producers.ProducerService
 
 @RestController
 @RequestMapping("/api/broker")

@@ -9,18 +9,21 @@ import java.util.*
 
 data class MessageProducer(
     val id: UUID,
-    val producerName: String,
+    var producerName: String,
     val brokerType: Broker.BrokerType,
-    val valueSerializationFormat: Broker.ProducerFormat,
-    val keySerializationFormat: Broker.ProducerFormat?,
-    var defaultProducer: Boolean,
+    var valueSerializationFormat: Broker.ProducerFormat,
+    var keySerializationFormat: Broker.ProducerFormat?,
     val createdAt: ZonedDateTime,
     var updatedAt: ZonedDateTime
 ) : Configurable {
     override fun updateConfiguration(config: Configurable): MessageProducer {
         if (config is MessageProducer) {
-            this.defaultProducer = config.defaultProducer
             this.updatedAt = ZonedDateTime.now()
+            this.producerName = config.producerName
+
+            // Todo: Figure out how to rebuild producers if the serialization format changes
+            this.valueSerializationFormat = config.valueSerializationFormat
+            this.keySerializationFormat = config.keySerializationFormat
         }
         return this
     }
@@ -33,7 +36,6 @@ data class MessageProducer(
                 brokerType = entity.brokerType,
                 keySerializationFormat = entity.keyFormat,
                 valueSerializationFormat = entity.valueFormat,
-                defaultProducer = entity.defaultProducer,
                 createdAt = entity.createdAt,
                 updatedAt = entity.updatedAt
             )

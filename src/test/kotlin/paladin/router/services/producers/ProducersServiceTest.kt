@@ -1,4 +1,4 @@
-package paladin.router.services.brokers
+package paladin.router.services.producers
 
 import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
@@ -14,7 +14,7 @@ import paladin.router.util.factory.MessageDispatcherFactory
 import util.TestUtilServices
 
 @ExtendWith(MockKExtension::class)
-class BrokersServiceTest {
+class ProducersServiceTest {
 
     @MockK
     private lateinit var logger: KLogger

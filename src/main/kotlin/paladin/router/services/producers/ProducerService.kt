@@ -1,4 +1,4 @@
-package paladin.router.services.brokers
+package paladin.router.services.producers
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
@@ -32,8 +32,7 @@ class ProducerService(
     private val serviceEncryptionConfig: EncryptionConfigurationProperties,
     private val kafkaListenerEndpointRegistry: KafkaListenerEndpointRegistry,
     private val messageDispatcherFactory: MessageDispatcherFactory,
-    private val objectMapper: ObjectMapper,
-    private val messageProducerRepository: MessageProducerRepository
+    private val objectMapper: ObjectMapper
 ) : ApplicationRunner {
 
     /**
@@ -130,13 +129,12 @@ class ProducerService(
                 brokerType = request.brokerType,
                 keyFormat = request.keySerializationFormat,
                 valueFormat = request.valueSerializationFormat,
-                defaultProducer = request.defaultProducer,
                 producerConfig = objectMapper.convertValue(producerConfig),
                 producerConfigEncrypted = encryptedBrokerConfig
             )
 
             // Store the broker configuration in the database
-            val savedBroker: MessageProducerConfigurationEntity = messageProducerRepository.save(entity)
+            val savedBroker: MessageProducerConfigurationEntity = producerRepository.save(entity)
             MessageProducer.fromEntity(savedBroker).run {
                 return messageDispatcherFactory.fromProducerProperties(
                     producer = this,

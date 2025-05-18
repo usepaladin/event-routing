@@ -71,9 +71,6 @@ data class MessageProducerConfigurationEntity(
     @Column(name = "producer_config", nullable = false, columnDefinition = "JSONB")
     var producerConfig: Map<String, Any>,
 
-    @Column(name = "default_producer")
-    var defaultProducer: Boolean = false,
-
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP", updatable = false)
     var createdAt: ZonedDateTime = ZonedDateTime.now(),
 
@@ -96,7 +93,6 @@ data class MessageProducerConfigurationEntity(
                     valueFormat = it.valueSerializationFormat,
                     producerConfigEncrypted = encryptedConfig,
                     producerConfig = objectMapper.convertValue(producerConfig),
-                    defaultProducer = it.defaultProducer,
                     createdAt = it.createdAt,
                     updatedAt = it.updatedAt
                 )

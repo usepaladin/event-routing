@@ -18,7 +18,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 import paladin.router.enums.configuration.Broker
-import paladin.router.services.brokers.ProducerService
+import paladin.router.services.producers.ProducerService
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
@@ -41,13 +41,7 @@ class DispatchIntegrationTest {
     private lateinit var testAppender: TestLogAppender
     private var logger: KLogger = KotlinLogging.logger {}
     private lateinit var logbackLogger: Logger
-
-    @Autowired
-    private lateinit var producerService: ProducerService
-
-    @Autowired
-    private lateinit var dispatchService: DispatchService
-
+    
     @BeforeEach
     fun setup() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger

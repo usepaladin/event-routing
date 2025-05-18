@@ -8,6 +8,5 @@ data class ProducerCreationRequest(
     val brokerType: Broker.BrokerType,
     val keySerializationFormat: Broker.ProducerFormat?,
     val valueSerializationFormat: Broker.ProducerFormat,
-    val defaultProducer: Boolean = false,
     val configuration: Map<String, Any?>
 ) : Serializable

@@ -4,6 +4,4 @@ import org.springframework.data.jpa.repository.JpaRepository
 import paladin.router.entities.brokers.configuration.MessageProducerConfigurationEntity
 import java.util.*
 
-interface MessageProducerRepository : JpaRepository<MessageProducerConfigurationEntity, UUID> {
-    fun findByBrokerName(brokerName: String): MessageProducerConfigurationEntity?
-}
+interface MessageProducerRepository : JpaRepository<MessageProducerConfigurationEntity, UUID>
