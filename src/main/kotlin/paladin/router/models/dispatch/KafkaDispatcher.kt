@@ -56,7 +56,7 @@ data class KafkaDispatcher(
                 if (it == null) {
                     // Producer has not been instantiated
                     errorCounter?.increment()
-                    throw IllegalStateException("Dispatcher is currently not built or connected at the time of event production")
+                    throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
                 }
 
                 val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)

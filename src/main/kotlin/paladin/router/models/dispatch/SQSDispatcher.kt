@@ -9,8 +9,11 @@ import paladin.router.models.configuration.brokers.MessageProducer
 import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
 import paladin.router.models.configuration.brokers.core.SQSProducerConfig
 import paladin.router.services.schema.SchemaService
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
-import java.net.URI
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 
 /**
  * A dispatcher for sending messages to an Amazon SQS queue using [SqsClient].
@@ -48,135 +51,64 @@ data class SqsDispatcher(
         synchronized(lock) {
             client.let {
                 if (it == null) {
-                    val errorMsg =
-                        "SQS Broker => Broker name: ${name()} => Unable to send message => Client has not been instantiated"
-                    logger.error { errorMsg }
                     errorCounter?.increment()
-                    if (config.throwOnError) throw IllegalStateException(errorMsg)
-                    return
+                    throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
                 }
-            }
-            if (client == null) {
-                val errorMsg =
-                    "SQS Broker => Broker name: ${name()} => Unable to send message => Client has not been instantiated"
-                logger.error { errorMsg }
-                errorCounter?.increment()
-                if (config.throwOnError) throw IllegalStateException(errorMsg)
-                return
-            }
 
-            val dispatchKey = convertToFormat(key, topic.key, topic.keySchema)
-            val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
+                val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
+                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
 
-            val request = SendMessageRequest.builder()
-                .queueUrl(topic.destinationTopic)
-                .messageBody(dispatchValue.toString())
-                .messageGroupId(dispatchKey.toString()) // For FIFO queues
-                .messageDeduplicationId(dispatchKey.toString()) // For FIFO deduplication
-                .build()
+                val request = SendMessageRequest.builder()
+                    .queueUrl(topic.destinationTopic)
+                    .messageBody(dispatchValue.toString())
+                    .messageGroupId(dispatchKey.toString()) // For FIFO queues
+                    .messageDeduplicationId(dispatchKey.toString()) // For FIFO deduplication
+                    .build()
 
-            var lastException: Exception? = null
-            repeat(config.retries + 1) { attempt ->
-                sendTimer?.record {
-                    try {
-                        if (config.sync) {
-                            client?.sendMessage(request)
-                            logger.info {
-                                "SQS Broker => Broker name: ${name()} => Message sent synchronously to queue: $topic, groupId: $dispatchKey"
-                            }
-                            return@repeat
-                        } else {
-                            client?.sendMessage(request) // SqsClient is sync; use SqsAsyncClient for true async
-                            logger.info {
-                                "SQS Broker => Broker name: ${name()} => Message sent asynchronously to queue: $topic, groupId: $dispatchKey"
-                            }
-                            return@repeat
-                        }
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (attempt < config.retries) {
-                            logger.warn {
-                                "SQS Broker => Broker name: ${name()} => Retry attempt ${attempt + 1} for queue: $topic, groupId: $dispatchKey"
-                            }
-                            Thread.sleep(config.retryBackoffMs)
-                        }
-                    }
-                }
-            }
+                val runnable = sendMessage(request, it, topic.destinationTopic)
+                sendTimer?.record(runnable) ?: runnable.run()
 
-            if (lastException != null) {
-                val errorMsg =
-                    "SQS Broker => Broker name: ${name()} => Error sending message to queue: $topic, groupId: $dispatchKey"
-                logger.error(lastException) { errorMsg }
-                errorCounter?.increment()
-                this.updateConnectionState(MessageDispatcherState.Error(lastException))
-                if (config.throwOnError) throw lastException
             }
         }
     }
 
     /**
      * Dispatches a message to the specified SQS queue without a message group ID.
-     * Uses the default group ID from [SqsProducerConfig.defaultGroupId] or none for standard queues.
+     * Uses the default group ID from [SQSProducerConfig.defaultGroupId] or none for standard queues.
      *
      * @param payload The message payload.
      * @param topic The destination queue URL and serialization details.
      */
     override fun <V> dispatch(payload: V, topic: DispatchTopic) {
         synchronized(lock) {
-            if (client == null) {
-                val errorMsg =
-                    "SQS Broker => Broker name: ${name()} => Unable to send message => Client has not been instantiated"
-                logger.error { errorMsg }
-                errorCounter?.increment()
-                if (config.throwOnError) throw IllegalStateException(errorMsg)
-                return
-            }
-
-            val dispatchValue = convertToFormat(payload, topic.value, topic.valueSchema)
-
-            val request = SendMessageRequest.builder()
-                .queueUrl(topic.destinationTopic)
-                .messageBody(dispatchValue.toString())
-                .apply { config.defaultGroupId?.let { messageGroupId(it).messageDeduplicationId(it) } }
-                .build()
-
-            var lastException: Exception? = null
-            repeat(config.retries + 1) { attempt ->
-                sendTimer?.record {
-                    try {
-                        if (config.sync) {
-                            client?.sendMessage(request)
-                            logger.info {
-                                "SQS Broker => Broker name: ${name()} => Message sent synchronously to queue: $topic (no key)"
-                            }
-                            return@repeat
-                        } else {
-                            client?.sendMessage(request)
-                            logger.info {
-                                "SQS Broker => Broker name: ${name()} => Message sent asynchronously to queue: $topic (no key)"
-                            }
-                            return@repeat
-                        }
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (attempt < config.retries) {
-                            logger.warn {
-                                "SQS Broker => Broker name: ${name()} => Retry attempt ${attempt + 1} for queue: $topic (no key)"
-                            }
-                            Thread.sleep(config.retryBackoffMs)
-                        }
-                    }
+            client.let {
+                if (it == null) {
+                    errorCounter?.increment()
+                    throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
                 }
-            }
 
-            if (lastException != null) {
-                val errorMsg =
-                    "SQS Broker => Broker name: ${name()} => Error sending message to queue: $topic (no key)"
-                logger.error(lastException) { errorMsg }
+                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+
+                val request = SendMessageRequest.builder()
+                    .queueUrl(topic.destinationTopic)
+                    .messageBody(dispatchValue.toString())
+                    .apply { producerConfig.defaultGroupId?.let { id -> messageGroupId(id).messageDeduplicationId(id) } }
+                    .build()
+
+                val runnable = sendMessage(request, it, topic.destinationTopic)
+                sendTimer?.record(runnable) ?: runnable.run()
+            }
+        }
+    }
+
+    private fun sendMessage(request: SendMessageRequest, client: SqsClient, topic: String): Runnable {
+        return Runnable {
+            try {
+                client.sendMessage(request)
+                logger.info { "SQS Broker => Broker name: ${name()} => Message sent to queue: $topic" }
+            } catch (e: Exception) {
+                logger.error(e) { "SQS Broker => Broker name: ${name()} => Error sending message to queue: $topic" }
                 errorCounter?.increment()
-                this.updateConnectionState(MessageDispatcherState.Error(lastException))
-                if (config.throwOnError) throw lastException
             }
         }
     }
@@ -195,11 +127,11 @@ data class SqsDispatcher(
 
             try {
                 val credentials =
-                    AwsBasicCredentials.create(connectionConfig.accessKeyId, connectionConfig.secretAccessKey)
+                    AwsBasicCredentials.create(connectionConfig.accessKey, connectionConfig.secretKey)
                 client = SqsClient.builder()
-                    .region(Region.of(connectionConfig.region))
+                    .region(Region.of(connectionConfig.region.region))
                     .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                    .apply { connectionConfig.endpoint?.let { endpointOverride(URI.create(it)) } }
+//                    .apply { connectionConfig.endpoint?.let { endpointOverride(URI.create(it)) } }
                     .build()
 
                 testConnection()
@@ -237,10 +169,10 @@ data class SqsDispatcher(
         if (connectionConfig.secretKey.isEmpty()) {
             throw IllegalArgumentException("SQS Broker => Broker name: ${name()} => Secret access key cannot be null or empty")
         }
-        if (config.retries < 0) {
+        if (producerConfig.retryMaxAttempts < 0) {
             throw IllegalArgumentException("SQS Broker => Broker name: ${name()} => Retries cannot be less than 0")
         }
-        if (config.retryBackoffMs <= 0) {
+        if (producerConfig.retryBackoff <= 0) {
             throw IllegalArgumentException("SQS Broker => Broker name: ${name()} => Retry backoff must be greater than 0")
         }
     }
@@ -263,7 +195,4 @@ data class SqsDispatcher(
         }
     }
 
-    private fun name(): String {
-        return producer.producerName
-    }
 }
