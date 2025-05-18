@@ -22,6 +22,7 @@ create index idx_message_producers_producer_name on event_routing.message_produc
 create table event_routing.dispatch_topic
 (
     id                UUID primary key default uuid_generate_v4(),
+    producer_id       UUID         not null references event_routing.message_producers (id) on delete cascade,
     source_topic      VARCHAR(255) not null,
     destination_topic VARCHAR(255) not null,
     key_format        VARCHAR(255) not null check (dispatch_topic.key_format IN ('STRING', 'JSON', 'AVRO')),
@@ -30,10 +31,9 @@ create table event_routing.dispatch_topic
     value_schema      TEXT
 );
 
-create index idx_dispatch_source_topic_name on event_routing.dispatch_topic (source_topic);
-
 alter table event_routing.dispatch_topic
-    add constraint dispatch_topic_source_topic_destination_topic unique (source_topic, destination_topic);
+    add constraint unq_dispatch_topic_dispatcher_topic unique (producer_id, source_topic, destination_topic);
+create index idx_dispatch_producer_id on event_routing.dispatch_topic (producer_id);
 
 create table if not exists event_routing.event_listener
 (
@@ -49,7 +49,7 @@ create table if not exists event_routing.event_listener
 );
 
 alter table event_routing.event_listener
-    add constraint event_listener_topic_name_group_id_unique unique (topic_name, group_id);
+    add constraint unq_event_listener_topic_name_group_id unique (topic_name, group_id);
 
 create index if not exists event_listener_topic_name_idx
     on event_routing.event_listener (topic_name);
