@@ -58,4 +58,12 @@ abstract class MessageDispatcher : Serializable, AutoCloseable {
         data object Connected : MessageDispatcherState()
         data class Error(val exception: Throwable) : MessageDispatcherState()
     }
+
+    fun identifier(): String {
+        return "${producer.brokerType} Producer => Producer Name: ${name()}"
+    }
+
+    fun name(): String {
+        return producer.producerName
+    }
 }

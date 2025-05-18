@@ -9,28 +9,30 @@ data class KafkaProducerConfig(
     val groupId: String?,
     val enableSchemaRegistry: Boolean = true,
     // Synchronous or Asynchronous sending of messages
-    var allowAsync: Boolean = true,
+    override var allowAsync: Boolean = true,
+    override var retryMaxAttempts: Int = 3,
+    override var retryBackoff: Long = 1000L,
+    override var connectionTimeout: Long = 10000L,
+    override var errorHandlerStrategy: ProducerConfig.ErrorStrategy = ProducerConfig.ErrorStrategy.DLQ,
     // Enable auto commit of offsets
     var enableAutoCommit: Boolean = false,
     // Interval in milliseconds to commit offsets
     var autoCommitIntervalMs: Int = 5000,
-    // Timeout in milliseconds for requests
-    var requestTimeoutMs: Int = 30000,
-    // Number of retries for sending messages
-    var retries: Int = 5,
     // Acknowledgment level for message delivery
     var acks: String = "all",
-    val batchSize: Int = 16384, // Default batch size
-    val lingerMs: Int = 1, // Time to buffer messages
-    val compressionType: CompressionType = CompressionType.NONE, // none, gzip, snappy, lz4
+    var batchSize: Int = 16384, // Default batch size
+    var lingerMs: Int = 1, // Time to buffer messages
+    var compressionType: CompressionType = CompressionType.NONE, // none, gzip, snappy, lz4
 ) : ProducerConfig {
     override fun updateConfiguration(config: Configurable): KafkaProducerConfig {
         if (config is KafkaProducerConfig) {
+            super.updateConfiguration(config)
             this.enableAutoCommit = config.enableAutoCommit
             this.autoCommitIntervalMs = config.autoCommitIntervalMs
-            this.requestTimeoutMs = config.requestTimeoutMs
-            this.retries = config.retries
             this.acks = config.acks
+            this.batchSize = config.batchSize
+            this.lingerMs = config.lingerMs
+            this.compressionType = config.compressionType
         }
         return this
     }

@@ -15,6 +15,16 @@ import paladin.router.models.configuration.brokers.core.RabbitProducerConfig
 import paladin.router.services.schema.SchemaService
 import java.util.*
 
+/**
+ * A dispatcher for sending messages to a Kafka broker using a [RabbitTemplate].
+ * Supports STRING, JSON, and AVRO serialization formats with optional schema registry integration.
+ *
+ * @param producer The Rabbit instance used for setting up the message producer
+ * @param producer The producer configuration (e.g., acks, retries).
+ * @param connectionConfig Configuration properties for Broker connection/authentication (e.g., host, ports, credentials).
+ * @param schemaService The service for serializing payloads.
+ * @param meterRegistry Optional registry for metrics (e.g., Micrometer).
+ */
 data class RabbitDispatcher(
     override val producer: MessageProducer,
     override val producerConfig: RabbitProducerConfig,

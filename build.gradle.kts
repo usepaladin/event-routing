@@ -71,6 +71,9 @@ dependencies {
     implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit:4.2.1")
+    implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+    implementation("software.amazon.awssdk:sqs:2.31.40")
 
     implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
@@ -100,10 +103,6 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:localstack:1.20.2")
 
-    // AWS SDK
-    testImplementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit:4.2.1")
-    testImplementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
-    testImplementation("software.amazon.awssdk:sqs:2.31.40")
 
     // Mock Avro Models for Testing
     testImplementation("paladin.schemas:models:0.0.1-SNAPSHOT")

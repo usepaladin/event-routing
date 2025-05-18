@@ -14,9 +14,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.pow
 
-private const val MAX_RETRY_ATTEMPTS: Int = 3
-private const val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
-
 @Service
 class DispatchService(
     private val topicService: DispatchTopicService,
@@ -38,10 +35,10 @@ class DispatchService(
                 async {
                     val (dispatcher, topic) = it
                     try {
-                        logger.info { "Dispatch Service => Dispatching event to dispatcher: ${dispatcher.broker.brokerName} => Topic: ${topic.destinationTopic} => Key: $key" }
+                        logger.info { "Dispatch Service => Dispatching event via ${dispatcher.identifier()} => Topic: ${topic.destinationTopic} => Key: $key" }
                         dispatchToBroker(key, value, topic, dispatcher)
                     } catch (e: Exception) {
-                        logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${dispatcher.broker.brokerType} - ${dispatcher.broker.brokerName} => Message: ${e.message}" }
+                        logger.error(e) { "Dispatch Service => Error dispatching event => ${dispatcher.identifier()} => Message: ${e.message}" }
                         // Todo: Handle DLQ logic here
                     }
                 }
@@ -50,22 +47,29 @@ class DispatchService(
     }
 
     private suspend fun <K, V> dispatchToBroker(key: K, value: V, topic: DispatchTopic, dispatcher: MessageDispatcher) {
-        // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ
         repeat(
-            MAX_RETRY_ATTEMPTS
+            dispatcher.producerConfig.retryMaxAttempts
         ) { retryAttempt ->
             if (dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected) {
-                dispatcher.dispatch(key, value, topic)
-                return
+
+                try {
+                    dispatcher.dispatch(key, value, topic)
+                    return
+                } catch (ex: Exception) {
+                    logger.warn { "Dispatch Service => ${dispatcher.identifier()} => Retry Attempt $retryAttempt/\$${dispatcher.producerConfig.retryMaxAttempts} => Error occurred during dispatch => ${ex.message}" }
+                }
+
+            } else {
+                logger.warn { "Dispatch Service => ${dispatcher.identifier()} => Retry attempt $retryAttempt/\$${dispatcher.producerConfig.retryMaxAttempts} => Dispatcher is not connected at time of event production" }
             }
 
-            logger.warn { "Dispatch Service => Dispatcher Name: ${dispatcher.broker.brokerName} => Dispatcher is not connected at time of event production => Attempting Retry attempt $retryAttempt/$MAX_RETRY_ATTEMPTS" }
-            delay(MIN_RETRY_BACKOFF * (2F).pow(retryAttempt).toLong())
+
+            delay(dispatcher.producerConfig.retryBackoff * (2F).pow(retryAttempt).toLong())
         }
 
+
         // Max retries exhausted, throw exception and send to DLQ for manual handling
-        logger.error { "Dispatch Service => Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts" }
-        throw IOException("Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts")
+        throw IOException("Failed to dispatch event after ${dispatcher.producerConfig.retryMaxAttempts} attempts")
     }
 
 

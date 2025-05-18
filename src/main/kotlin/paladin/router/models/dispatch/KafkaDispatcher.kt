@@ -36,7 +36,7 @@ data class KafkaDispatcher(
     override val meterRegistry: MeterRegistry? = null,
 ) : MessageDispatcher() {
 
-    private var messageProducer: KafkaProducer<Any, Any>? = null
+    private var client: KafkaProducer<Any, Any>? = null
     private val lock = Any()
     private val sendTimer: Timer? = meterRegistry?.timer(
         "kafka.dispatcher.send",
@@ -51,17 +51,35 @@ data class KafkaDispatcher(
     override val logger: KLogger = KotlinLogging.logger {}
 
     override fun <V> dispatch(payload: V, topic: DispatchTopic) {
-        TODO("Not yet implemented")
+        synchronized(lock) {
+            client.let {
+                if (it == null) {
+                    // Producer has not been instantiated
+                    errorCounter?.increment()
+                    throw IllegalStateException("Dispatcher is currently not built or connected at the time of event production")
+                }
+
+                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+                val record: ProducerRecord<Any, Any> = ProducerRecord(topic.destinationTopic, dispatchValue)
+                try {
+                    val runnable = produceMessage(it, topic.destinationTopic, record)
+                    // Use the timer to measure the time taken for the send operation, else fire the runnable directly
+                    sendTimer?.record(runnable) ?: runnable.run()
+                } catch (e: Exception) {
+                    errorCounter?.increment()
+                    throw e
+                }
+            }
+        }
     }
 
     override fun <K, V> dispatch(key: K, payload: V, topic: DispatchTopic) {
         synchronized(lock) {
-            messageProducer.let {
+            client.let {
                 if (it == null) {
                     // Producer has not been instantiated
                     errorCounter?.increment()
-                    logger.error { "Kafka Producer => Producer Name: ${name()} => Unable to send message => Producer has not been instantiated" }
-                    return
+                    throw IllegalStateException("Dispatcher is currently not built or connected at the time of event production")
                 }
 
                 val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
@@ -69,34 +87,40 @@ data class KafkaDispatcher(
                 val record: ProducerRecord<Any, Any> =
                     ProducerRecord(topic.destinationTopic, dispatchKey, dispatchValue)
                 try {
-                    val runnable = Runnable {
-                        if (!producerConfig.allowAsync) {
-                            it.send(record).get()
-                            logger.info { "Kafka Producer => Producer Name: ${name()} => Message sent synchronously to topic: $topic" }
-                        } else {
-                            it.send(record) { metadata, exception ->
-                                if (exception != null) {
-                                    errorCounter?.increment()
-                                    logger.error(exception) {
-                                        "Kafka Producer => Producer Name: ${name()} => Error sending message to topic: $topic"
-                                    }
-                                } else {
-                                    logger.info {
-                                        "Kafka Producer => Producer Name: ${name()} => Message sent asynchronously to topic: $topic, " +
-                                                "partition: ${metadata.partition()}, offset: ${metadata.offset()}"
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    val runnable = produceMessage(it, topic.destinationTopic, record)
                     // Use the timer to measure the time taken for the send operation, else fire the runnable directly
                     sendTimer?.record(runnable) ?: runnable.run()
                 } catch (e: Exception) {
                     errorCounter?.increment()
-                    logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Error sending message to topic: $topic" }
-                    this.updateConnectionState(MessageDispatcherState.Error(e))
+                    throw e
                 }
+            }
+        }
+    }
 
+    private fun produceMessage(
+        client: KafkaProducer<Any, Any>,
+        topic: String,
+        record: ProducerRecord<Any, Any>
+    ): Runnable {
+        return Runnable {
+            if (!producerConfig.allowAsync) {
+                client.send(record).get()
+                logger.info { "${identifier()} => Message sent synchronously to topic: $topic" }
+            } else {
+                client.send(record) { metadata, exception ->
+                    if (exception != null) {
+                        errorCounter?.increment()
+                        logger.error(exception) {
+                            "${identifier()} => Error sending message to topic: $topic"
+                        }
+                    } else {
+                        logger.info {
+                            "${identifier()} => Message sent asynchronously to topic: $topic, " +
+                                    "partition: ${metadata.partition()}, offset: ${metadata.offset()}"
+                        }
+                    }
+                }
             }
         }
     }
@@ -118,8 +142,8 @@ data class KafkaDispatcher(
                     SerializerFactory.fromFormat(producer.valueSerializationFormat, requiresSchemaRegistry)
                 )
                 put(ProducerConfig.ACKS_CONFIG, producerConfig.acks)
-                put(ProducerConfig.RETRIES_CONFIG, producerConfig.retries)
-                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, producerConfig.requestTimeoutMs)
+                put(ProducerConfig.RETRIES_CONFIG, producerConfig.retryMaxAttempts)
+                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, producerConfig.retryBackoff)
                 put(ProducerConfig.BATCH_SIZE_CONFIG, producerConfig.batchSize)
                 put(ProducerConfig.LINGER_MS_CONFIG, producerConfig.lingerMs)
                 put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerConfig.compressionType.type)
@@ -135,7 +159,7 @@ data class KafkaDispatcher(
                 put("specific.avro.reader", false)
             }
 
-            messageProducer = KafkaProducer(properties)
+            client = KafkaProducer(properties)
             testConnection()
         }
     }
@@ -147,51 +171,47 @@ data class KafkaDispatcher(
             }
             AdminClient.create(adminProps).use { adminClient ->
                 adminClient.listTopics().names().get()
-                logger.info { "Kafka Producer => Producer Name: ${name()} => Connection successful" }
+                logger.info { "${identifier()} => Connection successful" }
                 this.updateConnectionState(MessageDispatcherState.Connected)
             }
         } catch (e: Exception) {
-            logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Connection failed" }
+            logger.error(e) { "${identifier()} => Connection failed" }
             this.updateConnectionState(MessageDispatcherState.Error(e))
         }
     }
 
     override fun validate() {
         if (connectionConfig.bootstrapServers.isNullOrEmpty()) {
-            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Bootstrap servers cannot be null or empty")
+            throw IllegalArgumentException("${identifier()} => Bootstrap servers cannot be null or empty")
         }
         if (producerConfig.acks.isEmpty()) {
-            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Acks cannot be null or empty")
+            throw IllegalArgumentException("${identifier()} => Acks cannot be null or empty")
         }
-        if (producerConfig.retries < 0) {
-            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Retries cannot be less than 0")
+        if (producerConfig.retryMaxAttempts < 0) {
+            throw IllegalArgumentException("${identifier()} => Retries cannot be less than 0")
         }
-        if (producerConfig.requestTimeoutMs <= 0) {
-            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Request timeout must be greater than 0")
+        if (producerConfig.retryBackoff <= 0) {
+            throw IllegalArgumentException("${identifier()} => Request timeout must be greater than 0")
         }
 
         if (this.requiresSchemaRegistry && connectionConfig.schemaRegistryUrl.isNullOrEmpty()) {
-            throw IllegalArgumentException("Kafka Producer => Producer Name: ${name()} => Schema registry URL cannot be null or empty for Avro format")
+            throw IllegalArgumentException("${identifier()} => Schema registry URL cannot be null or empty for Avro format")
         }
     }
 
     override fun close() {
         synchronized(lock) {
             try {
-                messageProducer?.flush()
-                messageProducer?.close()
-                logger.info { "Kafka Producer => Producer Name: ${name()} => Producer closed successfully" }
+                client?.flush()
+                client?.close()
+                logger.info { "${identifier()} => Producer closed successfully" }
                 this.updateConnectionState(MessageDispatcherState.Disconnected)
             } catch (e: Exception) {
-                logger.error(e) { "Kafka Producer => Producer Name: ${name()} => Error closing producer" }
+                logger.error(e) { "${identifier()} => Error closing producer" }
             } finally {
-                messageProducer = null
+                client = null
             }
         }
-    }
-
-    private fun name(): String {
-        return producer.producerName
     }
 
     /**
