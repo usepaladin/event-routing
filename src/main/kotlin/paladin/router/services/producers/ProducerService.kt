@@ -36,19 +36,13 @@ class ProducerService(
 ) : ApplicationRunner {
 
     /**
-     * On service start, before Kafka listeners begin to consume messages. The application
-     * will populate all message brokers from the database and build Message dispatchers.
-     */
-    override fun run(args: ApplicationArguments?) {
-        populateDispatchers()
-    }
-
-    /**
-     * Populates all message brokers from the database and builds Message dispatchers.
+     * On service start, before Kafka listeners begin to consume messages.
+     * Populate all message brokers from the database and builds Message dispatchers.
+     * Once a dispatcher is built. Fetch all of its associated topics and register them
      * On completion, Kafka listeners will be activated to begin consuming messages and routing
      * them to their correct event broker
      */
-    private fun populateDispatchers(): Unit {
+    override fun run(args: ApplicationArguments?) {
         // After producers have been populated, allow Listeners to consume messages and route messages
         val producers = producerRepository.findAll()
         producers.forEach { entity ->
@@ -73,23 +67,11 @@ class ProducerService(
                     dispatcher.validate()
                     dispatcher.build()
                     // Store the dispatcher in the dispatch service to route messages generated from other services
-                    dispatchService.setDispatcher(
-                        it.producerName,
-                        dispatcher
-                    )
-
+                    dispatchService.init(dispatcher)
                 }
             }
         }
 
-        activateListeners()
-    }
-
-    /**
-     * Starts up all Kafka listeners which will allow them to begin consuming all messages
-     * within the queue and route them to their correct event broker
-     */
-    private fun activateListeners() {
         kafkaListenerEndpointRegistry.listenerContainers.forEach { container ->
             if (!container.isRunning) {
                 container.start()

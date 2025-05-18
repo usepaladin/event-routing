@@ -10,7 +10,10 @@ import java.util.*
 @Table(
     name = "dispatch_topic", schema = "event_routing",
     indexes = [
-        Index(name = "idx_dispatch_source_topic_name", columnList = "source_topic"),
+        Index(name = "idx_dispatch_producer_id", columnList = "producer_id"),
+    ],
+    uniqueConstraints = [
+        UniqueConstraint(columnNames = ["producer_id", "source_topic", "destination_topic"])
     ]
 )
 data class DispatchTopicConfigurationEntity(
@@ -18,6 +21,9 @@ data class DispatchTopicConfigurationEntity(
     @GeneratedValue
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
     val id: UUID? = null,
+
+    @Column(name = "producer_id", nullable = false)
+    val producerId: UUID,
 
     @Column(name = "source_topic", nullable = false)
     var sourceTopic: String,

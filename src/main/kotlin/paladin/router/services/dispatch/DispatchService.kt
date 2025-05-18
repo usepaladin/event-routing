@@ -20,7 +20,7 @@ class DispatchService(
     private val logger: KLogger,
     @Qualifier("coroutineDispatcher") private val dispatcher: CoroutineDispatcher
 ) : CoroutineScope {
-    private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
+    private val messageDispatchers = ConcurrentHashMap<String, MessageDispatcher>()
     val job = SupervisorJob()
     override val coroutineContext: CoroutineContext
         get() = dispatcher + job
@@ -72,39 +72,49 @@ class DispatchService(
         throw IOException("Failed to dispatch event after ${dispatcher.producerConfig.retryMaxAttempts} attempts")
     }
 
-
-    fun setDispatcher(brokerName: String, dispatcher: MessageDispatcher) {
-        clientBrokers[brokerName] = dispatcher
+    /**
+     * Initialise a Dispatcher (When starting up the Application).
+     * Fetch all associated Dispatch topics and register them with the dispatcher
+     */
+    fun init(dispatcher: MessageDispatcher) {
+        dispatcher.run {
+            messageDispatchers[this.producer.producerName] = this
+            logger.info { "Dispatch Service => Dispatcher ${this.identifier()} registered successfully" }
+            topicService.init(this)
+        }
     }
 
-    fun removeDispatcher(brokerName: String) {
-        clientBrokers.remove(brokerName)
+    fun setDispatcher(producerName: String, dispatcher: MessageDispatcher) {
+        messageDispatchers[producerName] = dispatcher
     }
 
-    fun getDispatcher(brokerName: String): MessageDispatcher? {
-        return clientBrokers[brokerName]
+    fun removeDispatcher(producerName: String) {
+        messageDispatchers.remove(producerName)
+    }
+
+    fun getDispatcher(producerName: String): MessageDispatcher? {
+        return messageDispatchers[producerName]
     }
 
     fun getAllDispatchers(): List<MessageDispatcher> {
-        return clientBrokers.values.toList()
+        return messageDispatchers.values.toList()
     }
 
     fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest): DispatchTopic {
-        clientBrokers[dispatcherTopic.dispatcher].let {
+        messageDispatchers[dispatcherTopic.dispatcher].let {
             if (it == null) {
                 throw ProducerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
             }
 
-
             return topicService.addDispatcherTopic(
                 it,
-                DispatchTopic.fromRequest(dispatcherTopic)
+                DispatchTopic.fromRequest(dispatcherTopic, it.producer.id)
             )
         }
     }
 
     fun removeDispatcherFromTopic(topic: String, dispatcher: String): Unit {
-        clientBrokers[dispatcher].let {
+        messageDispatchers[dispatcher].let {
             if (it == null) {
                 throw ProducerNotFoundException("Dispatcher for topic $topic not found")
             }
@@ -113,11 +123,11 @@ class DispatchService(
     }
 
     fun editDispatcherForTopic(topic: DispatchTopicRequest): DispatchTopic {
-        clientBrokers[topic.dispatcher].let {
+        messageDispatchers[topic.dispatcher].let {
             if (it == null) {
                 throw ProducerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
             }
-            return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic))
+            return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic, it.producer.id))
         }
     }
 
@@ -130,7 +140,7 @@ class DispatchService(
     }
 
     fun getTopicsForDispatcher(dispatcher: String): List<DispatchTopic> {
-        clientBrokers[dispatcher].let {
+        messageDispatchers[dispatcher].let {
             if (it == null) {
                 throw ProducerNotFoundException("Dispatcher for topic $dispatcher not found")
             }

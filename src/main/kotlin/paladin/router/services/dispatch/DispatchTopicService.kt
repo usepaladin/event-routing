@@ -3,24 +3,38 @@ package paladin.router.services.dispatch
 import org.springframework.stereotype.Service
 import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.MessageDispatcher
+import paladin.router.repository.DispatchTopicRepository
+import paladin.router.util.factory.EntityFactory.toEntity
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class DispatchTopicService {
+class DispatchTopicService(
+    private val repository: DispatchTopicRepository
+) {
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
     fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
+        repository.save(topic.toEntity())
         dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
         return topic
     }
 
     fun updateDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
+        repository.save(topic.toEntity())
         dispatcherTopics[topic.sourceTopic]?.let { topics ->
             if (topics.containsKey(dispatcher)) {
                 topics[dispatcher] = topic
             }
         }
         return topic
+    }
+
+    fun init(dispatcher: MessageDispatcher) {
+        repository.findByProducerId(dispatcher.producer.id).map {
+            DispatchTopic.fromEntity(it).run {
+                dispatcherTopics.computeIfAbsent(this.sourceTopic) { ConcurrentHashMap() }[dispatcher] = this
+            }
+        }
     }
 
     fun getDispatchersForTopic(topic: String): ConcurrentHashMap<MessageDispatcher, DispatchTopic>? {
