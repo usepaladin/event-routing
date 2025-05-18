@@ -37,11 +37,11 @@ class BrokersServiceTest {
     @MockK
     private lateinit var messageDispatchServiceTest: MessageDispatcherFactory
 
-    private lateinit var brokerService: BrokerService
+    private lateinit var producerService: ProducerService
 
     @BeforeEach
     fun setUp() {
-        brokerService = BrokerService(
+        producerService = ProducerService(
             repository,
             dispatchService,
             encryptionService,

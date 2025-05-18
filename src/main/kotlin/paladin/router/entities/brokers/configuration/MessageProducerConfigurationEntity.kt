@@ -9,8 +9,8 @@ import jakarta.persistence.*
 import org.hibernate.annotations.Type
 import paladin.router.enums.configuration.Broker.BrokerType
 import paladin.router.enums.configuration.Broker.ProducerFormat
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.core.ProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.core.ProducerConfig
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -42,7 +42,7 @@ import java.util.*
         Index(name = "idx_message_producers_producer_name", columnList = "producer_name"),
     ]
 )
-data class MessageBrokerConfigurationEntity(
+data class MessageProducerConfigurationEntity(
     @Id
     @GeneratedValue
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
@@ -69,7 +69,7 @@ data class MessageBrokerConfigurationEntity(
 
     @Type(JsonBinaryType::class)
     @Column(name = "producer_config", nullable = false, columnDefinition = "JSONB")
-    var brokerConfig: Map<String, Any>,
+    var producerConfig: Map<String, Any>,
 
     @Column(name = "default_producer")
     var defaultProducer: Boolean = false,
@@ -85,17 +85,17 @@ data class MessageBrokerConfigurationEntity(
             messageProducer: MessageProducer,
             encryptedConfig: String,
             producerConfig: ProducerConfig
-        ): MessageBrokerConfigurationEntity {
+        ): MessageProducerConfigurationEntity {
             val objectMapper = ObjectMapper()
             messageProducer.let {
-                return MessageBrokerConfigurationEntity(
+                return MessageProducerConfigurationEntity(
                     id = it.id,
                     producerName = it.producerName,
                     brokerType = it.brokerType,
                     keyFormat = it.keySerializationFormat,
                     valueFormat = it.valueSerializationFormat,
                     producerConfigEncrypted = encryptedConfig,
-                    brokerConfig = objectMapper.convertValue(producerConfig),
+                    producerConfig = objectMapper.convertValue(producerConfig),
                     defaultProducer = it.defaultProducer,
                     createdAt = it.createdAt,
                     updatedAt = it.updatedAt

@@ -4,9 +4,9 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.auth.EncryptedProducerConfig
-import paladin.router.models.configuration.brokers.core.ProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.EncryptedProducerConfig
+import paladin.router.models.configuration.producers.core.ProducerConfig
 import paladin.router.services.schema.SchemaService
 import java.io.Serializable
 

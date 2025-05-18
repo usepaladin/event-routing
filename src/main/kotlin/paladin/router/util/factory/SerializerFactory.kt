@@ -18,6 +18,7 @@ object SerializerFactory {
                     "org.apache.kafka.common.serialization.StringSerializer" // Fallback to string for JSON without schema
                 }
             }
+
             Broker.ProducerFormat.AVRO -> {
                 if (!enforceSchema) {
                     throw IllegalArgumentException("AVRO serialization requires a schema registry")
@@ -26,5 +27,5 @@ object SerializerFactory {
             }
         }
     }
-    }
+
 }

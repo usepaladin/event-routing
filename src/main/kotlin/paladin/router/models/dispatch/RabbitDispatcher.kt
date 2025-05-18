@@ -9,9 +9,9 @@ import io.micrometer.core.instrument.Timer
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
-import paladin.router.models.configuration.brokers.core.RabbitProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.RabbitEncryptedConfig
+import paladin.router.models.configuration.producers.core.RabbitProducerConfig
 import paladin.router.services.schema.SchemaService
 import java.util.*
 

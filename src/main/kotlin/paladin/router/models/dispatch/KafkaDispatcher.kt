@@ -11,9 +11,9 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import paladin.router.enums.configuration.Broker
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.models.configuration.brokers.core.KafkaProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.producers.core.KafkaProducerConfig
 import paladin.router.services.schema.SchemaService
 import paladin.router.util.factory.SerializerFactory
 import java.util.*

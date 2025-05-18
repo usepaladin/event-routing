@@ -1,11 +1,10 @@
-package paladin.router.models.configuration.brokers.core
+package paladin.router.models.configuration.producers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable
 
 data class RabbitProducerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.RABBIT,
-    override var allowRetries: Boolean = true,
     override var allowAsync: Boolean = true,
     override var retryMaxAttempts: Int = 3,
     override var retryBackoff: Long = 1000L,

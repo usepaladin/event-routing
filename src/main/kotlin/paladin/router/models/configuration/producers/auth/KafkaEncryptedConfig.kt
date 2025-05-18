@@ -1,4 +1,4 @@
-package paladin.router.models.configuration.brokers.auth
+package paladin.router.models.configuration.producers.auth
 
 import paladin.router.util.Configurable
 

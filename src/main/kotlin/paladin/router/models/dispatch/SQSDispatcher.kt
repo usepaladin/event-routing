@@ -5,9 +5,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
-import paladin.router.models.configuration.brokers.core.SQSProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.SQSEncryptedConfig
+import paladin.router.models.configuration.producers.core.SQSProducerConfig
 import paladin.router.services.schema.SchemaService
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider

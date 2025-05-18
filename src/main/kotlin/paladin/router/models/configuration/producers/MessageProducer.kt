@@ -1,6 +1,6 @@
-package paladin.router.models.configuration.brokers
+package paladin.router.models.configuration.producers
 
-import paladin.router.entities.brokers.configuration.MessageBrokerConfigurationEntity
+import paladin.router.entities.brokers.configuration.MessageProducerConfigurationEntity
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable
@@ -26,7 +26,7 @@ data class MessageProducer(
     }
 
     companion object Factory {
-        fun fromEntity(entity: MessageBrokerConfigurationEntity): MessageProducer {
+        fun fromEntity(entity: MessageProducerConfigurationEntity): MessageProducer {
             return MessageProducer(
                 id = entity.id ?: throw IllegalArgumentException("BrokerTopic ID cannot be null"),
                 producerName = entity.producerName,

@@ -1,8 +1,8 @@
 package paladin.router.dto
 
-import paladin.router.models.configuration.brokers.MessageProducer
-import paladin.router.models.configuration.brokers.auth.EncryptedProducerConfig
-import paladin.router.models.configuration.brokers.core.ProducerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.EncryptedProducerConfig
+import paladin.router.models.configuration.producers.core.ProducerConfig
 
 open class BrokerDTO(
     val broker: MessageProducer,

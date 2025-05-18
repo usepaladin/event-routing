@@ -18,7 +18,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 import paladin.router.enums.configuration.Broker
-import paladin.router.services.brokers.BrokerService
+import paladin.router.services.brokers.ProducerService
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
@@ -43,7 +43,7 @@ class DispatchIntegrationTest {
     private lateinit var logbackLogger: Logger
 
     @Autowired
-    private lateinit var brokerService: BrokerService
+    private lateinit var producerService: ProducerService
 
     @Autowired
     private lateinit var dispatchService: DispatchService

@@ -4,7 +4,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import paladin.router.exceptions.BrokerNotFoundException
+import paladin.router.exceptions.ProducerNotFoundException
 import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.models.dispatch.MessageDispatcher
@@ -92,7 +92,7 @@ class DispatchService(
     fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest): DispatchTopic {
         clientBrokers[dispatcherTopic.dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
+                throw ProducerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
             }
 
 
@@ -106,7 +106,7 @@ class DispatchService(
     fun removeDispatcherFromTopic(topic: String, dispatcher: String): Unit {
         clientBrokers[dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic $topic not found")
+                throw ProducerNotFoundException("Dispatcher for topic $topic not found")
             }
             topicService.removeDispatcherFromTopic(topic, it)
         }
@@ -115,7 +115,7 @@ class DispatchService(
     fun editDispatcherForTopic(topic: DispatchTopicRequest): DispatchTopic {
         clientBrokers[topic.dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
+                throw ProducerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
             }
             return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic))
         }
@@ -132,7 +132,7 @@ class DispatchService(
     fun getTopicsForDispatcher(dispatcher: String): List<DispatchTopic> {
         clientBrokers[dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic $dispatcher not found")
+                throw ProducerNotFoundException("Dispatcher for topic $dispatcher not found")
             }
             return topicService.getAllTopicsForDispatcher(it)
         }

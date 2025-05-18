@@ -1,4 +1,4 @@
-package paladin.router.models.configuration.brokers.core
+package paladin.router.models.configuration.producers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable

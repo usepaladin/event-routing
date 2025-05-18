@@ -1,4 +1,4 @@
-package paladin.router.models.configuration.brokers.core
+package paladin.router.models.configuration.producers.core
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable
@@ -7,7 +7,7 @@ data class KafkaProducerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.KAFKA,
     val clientId: String,
     val groupId: String?,
-    val enableSchemaRegistry: Boolean = true,
+    var enableSchemaRegistry: Boolean = false,
     // Synchronous or Asynchronous sending of messages
     override var allowAsync: Boolean = true,
     override var retryMaxAttempts: Int = 3,
