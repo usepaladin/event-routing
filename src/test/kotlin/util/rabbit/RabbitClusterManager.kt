@@ -57,10 +57,8 @@ class RabbitClusterManager {
         }
     }
 
-    // Get the ConnectionFactory for a specific cluster
-    fun getConnectionFactory(clusterId: String): CachingConnectionFactory {
-        return clusters[clusterId]?.client
-            ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
+    fun getCluster(clusterId: String): MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory> {
+        return clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
     }
 
     // Clean up a specific cluster

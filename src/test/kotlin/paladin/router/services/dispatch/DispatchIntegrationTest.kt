@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.mockk.spyk
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,8 +12,10 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
+import paladin.router.enums.configuration.Broker
 import paladin.router.services.producers.ProducerService
 import util.TestLogAppender
+import util.brokers.ProducerCreationFactory
 import util.kafka.KafkaClusterManager
 import util.rabbit.RabbitClusterManager
 import util.sqs.SqsClusterManager
@@ -211,8 +212,40 @@ class DispatchIntegrationTest {
             kafkaClusterManager.createTopic(KAFKA_CLUSTER_2, it)
         }
 
+        // Set up Dispatchers
+        val kafkaProducer1 = ProducerCreationFactory.fromKafka(
+            name = "kafka-producer-1",
+            cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
+            keySerializationFormat = Broker.ProducerFormat.STRING,
+            valueSerializationFormat = Broker.ProducerFormat.STRING
+        )
+
+        val kafkaProducer2 = ProducerCreationFactory.fromKafka(
+            name = "kafka-producer-2",
+            cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_2),
+            keySerializationFormat = Broker.ProducerFormat.STRING,
+            valueSerializationFormat = Broker.ProducerFormat.STRING
+        )
+
+        val sqsProducer = ProducerCreationFactory.fromSqs(
+            name = "sqs-producer-1",
+            cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
+            valueSerializationFormat = Broker.ProducerFormat.STRING
+        )
+
+        val rabbitProducer = ProducerCreationFactory.fromRabbit(
+            name = "rabbit-producer-1",
+            cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
+            valueSerializationFormat = Broker.ProducerFormat.STRING,
+            queue = rabbitQueue1
+        )
 
         // Set up Dispatchers
-        // Mock an Event Listener
+        producerService.registerProducer(kafkaProducer1)
+        producerService.registerProducer(kafkaProducer2)
+        producerService.registerProducer(sqsProducer)
+        producerService.registerProducer(rabbitProducer)
+        
+
     }
 }

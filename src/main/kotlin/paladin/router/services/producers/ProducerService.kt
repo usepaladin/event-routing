@@ -103,7 +103,7 @@ class ProducerService(
                 if (it) return@let encryptionService.encryptObject(encryptedConfig)
                     ?: throw IOException("Failed to encrypt broker configuration")
 
-                producerConfig.toString()
+                encryptedConfig.toString()
             }
 
             val entity = MessageProducerConfigurationEntity(

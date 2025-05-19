@@ -68,8 +68,8 @@ class SqsClusterManager {
     }
 
     // Get the SqsClient for a specific cluster
-    fun getClient(clusterId: String): SqsClient {
-        return clusters[clusterId]?.client ?: throw IllegalStateException("Cluster $clusterId not initialized")
+    fun getCluster(clusterId: String): MessageBrokerCluster<LocalStackContainer, SqsClient> {
+        return clusters[clusterId] ?: throw IllegalStateException("Cluster $clusterId not initialized")
     }
 
     // Clean up a specific cluster

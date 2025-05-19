@@ -48,23 +48,23 @@ data class MessageProducerConfigurationEntity(
     @Column(name = "id", columnDefinition = "UUID DEFAULT uuid_generate_v4()", nullable = false)
     val id: UUID? = null,
 
-    @Column(name = "producer_name", nullable = false, unique = true)
+    @Column(name = "producer_name", nullable = false, unique = true, length = 255, columnDefinition = "VARCHAR(255)")
     var producerName: String,
 
-    @Column(name = "broker_type", nullable = false)
+    @Column(name = "broker_type", nullable = false, length = 255, columnDefinition = "VARCHAR(255)")
     @Enumerated(EnumType.STRING)
     val brokerType: BrokerType,
 
-    @Column(name = "key_format", nullable = true)
+    @Column(name = "key_format", nullable = true, length = 255, columnDefinition = "VARCHAR(255)")
     @Enumerated(EnumType.STRING)
     val keyFormat: ProducerFormat?,
 
-    @Column(name = "value_format", nullable = false)
+    @Column(name = "value_format", nullable = false, length = 255, columnDefinition = "VARCHAR(255)")
     @Enumerated(EnumType.STRING)
     val valueFormat: ProducerFormat,
 
     @JsonIgnore
-    @Column(name = "enc_producer_config", nullable = false)
+    @Column(name = "enc_producer_config", nullable = false, length = 4096, columnDefinition = "TEXT")
     var producerConfigEncrypted: String,
 
     @Type(JsonBinaryType::class)

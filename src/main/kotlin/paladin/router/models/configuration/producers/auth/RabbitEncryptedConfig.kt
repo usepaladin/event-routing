@@ -5,7 +5,7 @@ import paladin.router.util.Configurable
 data class RabbitEncryptedConfig(
     var host: String,
     var port: Int = 5672,
-    var virtualHost: String? = null,
+    var virtualHost: String = "/",
     var username: String? = null,
     var password: String? = null,
     var sslEnabled: Boolean = false,

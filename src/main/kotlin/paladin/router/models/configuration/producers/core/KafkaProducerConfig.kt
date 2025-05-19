@@ -11,8 +11,8 @@ data class KafkaProducerConfig(
     // Synchronous or Asynchronous sending of messages
     override var allowAsync: Boolean = true,
     override var retryMaxAttempts: Int = 3,
-    override var retryBackoff: Long = 1000L,
-    override var connectionTimeout: Long = 10000L,
+    override var retryBackoff: Int = 1000,
+    override var connectionTimeout: Int = 10000,
     override var errorHandlerStrategy: ProducerConfig.ErrorStrategy = ProducerConfig.ErrorStrategy.DLQ,
     // Enable auto commit of offsets
     var enableAutoCommit: Boolean = false,

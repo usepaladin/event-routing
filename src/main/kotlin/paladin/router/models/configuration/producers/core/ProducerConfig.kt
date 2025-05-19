@@ -9,8 +9,8 @@ sealed interface ProducerConfig : Serializable, Configurable {
     val brokerType: BrokerType
     var allowAsync: Boolean
     var retryMaxAttempts: Int
-    var retryBackoff: Long
-    var connectionTimeout: Long
+    var retryBackoff: Int
+    var connectionTimeout: Int
     var errorHandlerStrategy: ErrorStrategy
     override fun updateConfiguration(config: Configurable): Configurable {
         if (config is ProducerConfig) {

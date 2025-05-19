@@ -19,7 +19,10 @@ fun fromDataclassToMap(objs: List<Any>): Map<String, Any> {
         for (property in kClass.memberProperties) {
             val value = property.getter.call(obj)
             if (value != null) {
-                map[property.name] = value
+                map[property.name] = value.let {
+                    if (it is Enum<*>) return@let it.name
+                    it
+                }
             }
         }
     }

@@ -32,8 +32,8 @@ object ProducerConfigFactory {
             groupId = properties["groupId"] as String?,
             allowAsync = properties["allowAsync"] as Boolean,
             retryMaxAttempts = properties["retryMaxAttempts"] as Int,
-            retryBackoff = properties["retryBackoff"] as Long,
-            connectionTimeout = properties["connectionTimeout"] as Long,
+            retryBackoff = properties["retryBackoff"] as Int,
+            connectionTimeout = properties["connectionTimeout"] as Int,
             errorHandlerStrategy = ProducerConfig.ErrorStrategy.valueOf(
                 (properties["errorHandlerStrategy"] as String?)?.uppercase() ?: ProducerConfig.ErrorStrategy.DLQ.name
             ),
@@ -70,8 +70,8 @@ object ProducerConfigFactory {
         val brokerConfig = RabbitProducerConfig(
             allowAsync = properties["allowAsync"] as Boolean,
             retryMaxAttempts = properties["retryMaxAttempts"] as Int,
-            retryBackoff = properties["retryBackoff"] as Long,
-            connectionTimeout = properties["connectionTimeout"] as Long,
+            retryBackoff = properties["retryBackoff"] as Int,
+            connectionTimeout = properties["connectionTimeout"] as Int,
             errorHandlerStrategy = ProducerConfig.ErrorStrategy.valueOf(
                 (properties["errorHandlerStrategy"] as String?)?.uppercase() ?: ProducerConfig.ErrorStrategy.DLQ.name
             ),
@@ -101,8 +101,8 @@ object ProducerConfigFactory {
         val brokerConfig = SQSProducerConfig(
             allowAsync = properties["allowAsync"] as Boolean,
             retryMaxAttempts = properties["retryMaxAttempts"] as Int,
-            retryBackoff = properties["retryBackoff"] as Long,
-            connectionTimeout = properties["connectionTimeout"] as Long,
+            retryBackoff = properties["retryBackoff"] as Int,
+            connectionTimeout = properties["connectionTimeout"] as Int,
             errorHandlerStrategy = ProducerConfig.ErrorStrategy.valueOf(
                 (properties["errorHandlerStrategy"] as String?)?.uppercase() ?: ProducerConfig.ErrorStrategy.DLQ.name
             ),
