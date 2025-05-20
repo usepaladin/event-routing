@@ -20,6 +20,7 @@ import util.kafka.KafkaClusterManager
 import util.rabbit.RabbitClusterManager
 import util.sqs.SqsClusterManager
 import java.util.*
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @DirtiesContext
@@ -240,12 +241,23 @@ class DispatchIntegrationTest {
             queue = rabbitQueue1
         )
 
-        // Set up Dispatchers
-        producerService.registerProducer(kafkaProducer1)
-        producerService.registerProducer(kafkaProducer2)
-        producerService.registerProducer(sqsProducer)
-        producerService.registerProducer(rabbitProducer)
-        
+        // Set up Dispatchers and assert successful connection with given configuration properties
+        producerService.registerProducer(kafkaProducer1).also {
+            assertTrue { it.testConnection() }
+        }
+        producerService.registerProducer(kafkaProducer2).also {
+            assertTrue { it.testConnection() }
+        }
+        producerService.registerProducer(sqsProducer).also {
+            assertTrue { it.testConnection() }
+        }
+        producerService.registerProducer(rabbitProducer).also {
+            assertTrue { it.testConnection() }
+        }
 
+        // Allocate topics to dispatchers
+        // Mock an event listener dispatching a message to linked dispatchers
+        // Assert message has been dispatched
+        // Assert message was received by testContainer broker
     }
 }

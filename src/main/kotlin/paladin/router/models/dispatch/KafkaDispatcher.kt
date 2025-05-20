@@ -164,7 +164,7 @@ data class KafkaDispatcher(
         }
     }
 
-    override fun testConnection() {
+    override fun testConnection(): Boolean {
         try {
             val adminProps = Properties().apply {
                 put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, connectionConfig.bootstrapServers)
@@ -173,10 +173,12 @@ data class KafkaDispatcher(
                 adminClient.listTopics().names().get()
                 logger.info { "${identifier()} => Connection successful" }
                 this.updateConnectionState(MessageDispatcherState.Connected)
+                return true
             }
         } catch (e: Exception) {
             logger.error(e) { "${identifier()} => Connection failed" }
             this.updateConnectionState(MessageDispatcherState.Error(e))
+            return false
         }
     }
 

@@ -101,23 +101,6 @@ data class RabbitDispatcher(
         }
     }
 
-
-    override fun testConnection() {
-        synchronized(lock) {
-            try {
-                messageProducer?.connectionFactory?.createConnection()?.createChannel(true)?.use { channel ->
-                    // Test by declaring a temporary queue
-                    channel.queueDeclarePassive(name()) // Assumes brokerName is a valid queue for testing
-                }
-                logger.info { "${identifier()} => Connection successful" }
-                this.updateConnectionState(MessageDispatcherState.Connected)
-            } catch (e: Exception) {
-                logger.error(e) { "${identifier()} => Connection failed" }
-                this.updateConnectionState(MessageDispatcherState.Error(e))
-            }
-        }
-    }
-
     override fun build() {
         synchronized(lock) {
             this.updateConnectionState(MessageDispatcherState.Building)
@@ -162,6 +145,25 @@ data class RabbitDispatcher(
             }
 
             testConnection()
+        }
+    }
+
+    override fun testConnection(): Boolean {
+        synchronized(lock) {
+            try {
+                messageProducer?.connectionFactory?.createConnection()?.createChannel(true)?.use { channel ->
+                    // Test by declaring a temporary queue
+                    channel.queueDeclarePassive(producerConfig.queueName) // Assumes brokerName is a valid queue for testing
+                }
+                logger.info { "${identifier()} => Connection successful" }
+                this.updateConnectionState(MessageDispatcherState.Connected)
+                return true
+            } catch (e: Exception) {
+                logger.error(e) { "${identifier()} => Connection failed" }
+                this.updateConnectionState(MessageDispatcherState.Error(e))
+                errorCounter?.increment()
+                return false
+            }
         }
     }
 

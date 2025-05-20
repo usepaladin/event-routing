@@ -1,7 +1,6 @@
 package paladin.router.util.factory
 
 import paladin.router.enums.configuration.Broker
-import paladin.router.enums.configuration.sqs.Region
 import paladin.router.models.configuration.producers.auth.EncryptedProducerConfig
 import paladin.router.models.configuration.producers.auth.KafkaEncryptedConfig
 import paladin.router.models.configuration.producers.auth.RabbitEncryptedConfig
@@ -10,6 +9,7 @@ import paladin.router.models.configuration.producers.core.KafkaProducerConfig
 import paladin.router.models.configuration.producers.core.ProducerConfig
 import paladin.router.models.configuration.producers.core.RabbitProducerConfig
 import paladin.router.models.configuration.producers.core.SQSProducerConfig
+import software.amazon.awssdk.regions.Region
 
 
 object ProducerConfigFactory {
@@ -116,7 +116,8 @@ object ProducerConfigFactory {
         val encryptedConfig = SQSEncryptedConfig(
             accessKey = properties["accessKey"] as String,
             secretKey = properties["secretKey"] as String,
-            region = Region.valueOf((properties["region"] as String).uppercase())
+            region = properties["region"] as Region,
+            endpointURL = properties["endpointURL"] as String
         )
 
         return Pair(brokerConfig, encryptedConfig)

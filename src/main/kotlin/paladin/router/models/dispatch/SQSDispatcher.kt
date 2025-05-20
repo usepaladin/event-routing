@@ -11,9 +11,9 @@ import paladin.router.models.configuration.producers.core.SQSProducerConfig
 import paladin.router.services.schema.SchemaService
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
-import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
+import java.net.URI
 
 /**
  * A dispatcher for sending messages to an Amazon SQS queue using [SqsClient].
@@ -129,9 +129,9 @@ data class SqsDispatcher(
                 val credentials =
                     AwsBasicCredentials.create(connectionConfig.accessKey, connectionConfig.secretKey)
                 client = SqsClient.builder()
-                    .region(Region.of(connectionConfig.region.region))
+                    .apply { connectionConfig.endpointURL?.let { endpointOverride(URI.create(it)) } }
+                    .region(connectionConfig.region)
                     .credentialsProvider(StaticCredentialsProvider.create(credentials))
-//                    .apply { connectionConfig.endpoint?.let { endpointOverride(URI.create(it)) } }
                     .build()
 
                 testConnection()
@@ -145,16 +145,18 @@ data class SqsDispatcher(
     /**
      * Tests the connection to the SQS service by listing queues.
      */
-    override fun testConnection() {
+    override fun testConnection(): Boolean {
         synchronized(lock) {
             try {
                 client?.listQueues()
                 logger.info { "SQS Broker => Broker name: ${name()} => Connection successful" }
                 this.updateConnectionState(MessageDispatcherState.Connected)
+                return true
             } catch (e: Exception) {
                 logger.error(e) { "SQS Broker => Broker name: ${name()} => Connection failed" }
                 errorCounter?.increment()
                 this.updateConnectionState(MessageDispatcherState.Error(e))
+                return false
             }
         }
     }

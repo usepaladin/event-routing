@@ -43,7 +43,15 @@ abstract class MessageDispatcher : Serializable, AutoCloseable {
      * provided by the user
      */
     abstract fun build()
-    abstract fun testConnection()
+
+    /**
+     * Tests the connection to the message broker using the provided configuration properties.
+     * This method should be called before building the dispatcher to ensure
+     * that the connection can be established successfully.
+     *
+     * Or to check if the dispatcher can still successfully connect to its associated broker
+     */
+    abstract fun testConnection(): Boolean
 
     /**
      * Validates the dispatcher of the message producer,

@@ -4,7 +4,6 @@ import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.containers.localstack.LocalStackContainer
 import paladin.router.enums.configuration.Broker
-import paladin.router.enums.configuration.sqs.Region
 import paladin.router.models.configuration.producers.ProducerCreationRequest
 import paladin.router.models.configuration.producers.auth.KafkaEncryptedConfig
 import paladin.router.models.configuration.producers.auth.RabbitEncryptedConfig
@@ -13,6 +12,7 @@ import paladin.router.models.configuration.producers.core.KafkaProducerConfig
 import paladin.router.models.configuration.producers.core.RabbitProducerConfig
 import paladin.router.models.configuration.producers.core.SQSProducerConfig
 import paladin.router.util.fromDataclassToMap
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
 import util.KafkaCluster
 import util.MessageBrokerCluster
@@ -74,7 +74,8 @@ object ProducerCreationFactory {
         val encryptedConfig = SQSEncryptedConfig(
             accessKey = cluster.container.accessKey,
             secretKey = cluster.container.secretKey,
-            region = Region.fromRegion(cluster.container.region) ?: Region.US_EAST_1,
+            region = Region.of(cluster.container.region),
+            endpointURL = cluster.container.endpoint.toString(),
         )
 
         return ProducerCreationRequest(
