@@ -16,6 +16,6 @@ data class EventListener(
     private val dispatchService: DispatchService
 ) {
     fun processMessage(message: ConsumerRecord<Any, Any>) {
-        dispatchService.dispatchEvents(message.key(), message.value(), this)
+        dispatchService.dispatchEvents(message.key(), message.value(), this.topic)
     }
 }

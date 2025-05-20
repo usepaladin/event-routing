@@ -8,7 +8,6 @@ import paladin.router.exceptions.ProducerNotFoundException
 import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.models.dispatch.MessageDispatcher
-import paladin.router.models.listener.EventListener
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
@@ -25,18 +24,18 @@ class DispatchService(
     override val coroutineContext: CoroutineContext
         get() = dispatcher + job
 
-    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) {
+    fun <K, V> dispatchEvents(key: K, value: V, topic: String) {
         launch {
             val dispatchTopics: ConcurrentHashMap<MessageDispatcher, DispatchTopic> =
-                topicService.getDispatchersForTopic(listener.topic)
-                    ?: throw IllegalStateException("Dispatch Service => No dispatchers found for topic: ${listener.topic}")
+                topicService.getDispatchersForTopic(topic)
+                    ?: throw IllegalStateException("Dispatch Service => No dispatchers found for topic: $topic")
 
             dispatchTopics.asIterable().map {
                 async {
-                    val (dispatcher, topic) = it
+                    val (dispatcher, dispatchTopic) = it
                     try {
-                        logger.info { "Dispatch Service => Dispatching event via ${dispatcher.identifier()} => Topic: ${topic.destinationTopic} => Key: $key" }
-                        dispatchToBroker(key, value, topic, dispatcher)
+                        logger.info { "Dispatch Service => Dispatching event via ${dispatcher.identifier()} => Topic: ${dispatchTopic.destinationTopic} => Key: $key" }
+                        dispatchToBroker(key, value, dispatchTopic, dispatcher)
                     } catch (e: Exception) {
                         logger.error(e) { "Dispatch Service => Error dispatching event => ${dispatcher.identifier()} => Message: ${e.message}" }
                         // Todo: Handle DLQ logic here
