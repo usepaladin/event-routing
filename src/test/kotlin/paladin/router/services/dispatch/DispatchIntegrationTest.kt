@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.mockk.mockk
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,6 +14,8 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 import paladin.router.enums.configuration.Broker
+import paladin.router.models.dispatch.DispatchTopicRequest
+import paladin.router.models.listener.EventListener
 import paladin.router.services.producers.ProducerService
 import util.TestLogAppender
 import util.brokers.ProducerCreationFactory
@@ -255,8 +258,38 @@ class DispatchIntegrationTest {
             assertTrue { it.testConnection() }
         }
 
+
+        val kafkaBroker1DispatchTopicRequest = DispatchTopicRequest(
+            dispatcher = kafkaProducer1.producerName,
+            sourceTopic = sourceTopic,
+            destinationTopic = kafkaTopic1,
+            key = Broker.ProducerFormat.STRING,
+            value = Broker.ProducerFormat.STRING
+        )
+
+        val sqsProducerDispatchTopicRequest = DispatchTopicRequest(
+            dispatcher = sqsProducer.producerName,
+            sourceTopic = sourceTopic,
+            destinationTopic = sqsTopic1,
+            key = Broker.ProducerFormat.STRING,
+            value = Broker.ProducerFormat.STRING
+        )
+
+        val rabbitProducerDispatchTopicRequest = DispatchTopicRequest(
+            dispatcher = rabbitProducer.producerName,
+            sourceTopic = sourceTopic,
+            destinationTopic = rabbitTopic1,
+            key = Broker.ProducerFormat.STRING,
+            value = Broker.ProducerFormat.STRING
+        )
+
         // Allocate topics to dispatchers
+        dispatchService.addDispatcherTopic(kafkaBroker1DispatchTopicRequest)
+        dispatchService.addDispatcherTopic(sqsProducerDispatchTopicRequest)
+        dispatchService.addDispatcherTopic(rabbitProducerDispatchTopicRequest)
+
         // Mock an event listener dispatching a message to linked dispatchers
+        val eventListener = mockk<EventListener>(relaxed = true)
         // Assert message has been dispatched
         // Assert message was received by testContainer broker
     }

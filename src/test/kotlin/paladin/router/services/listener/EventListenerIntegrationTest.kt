@@ -133,7 +133,7 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<String>())
         } coAnswers {
             latch.countDown()
         }
@@ -160,7 +160,7 @@ class EventListenerIntegrationTest {
 
         // Verify dispatchService was called with correct parameters
         coVerify(exactly = 1) {
-            spiedDispatchService.dispatchEvents(key, value, listener)
+            spiedDispatchService.dispatchEvents(key, value, listener.topic)
         }
 
         // Cleanup
@@ -193,7 +193,7 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<String>())
         } coAnswers {
             latch.countDown()
         }
@@ -219,7 +219,7 @@ class EventListenerIntegrationTest {
 
         // Verify dispatchService was called for each message
         coVerify(exactly = messageCount) {
-            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<String>(), any<String>(), any<String>())
         }
 
         // Cleanup
@@ -277,7 +277,7 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<SpecificRecord>(), any<SpecificRecord>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<SpecificRecord>(), any<SpecificRecord>(), any<String>())
         } coAnswers {
             latch.countDown()
         }
@@ -301,7 +301,7 @@ class EventListenerIntegrationTest {
 
         // Verify dispatchService was called with correct parameters
         coVerify(exactly = 1) {
-            spiedDispatchService.dispatchEvents(key, payload, listener)
+            spiedDispatchService.dispatchEvents(key, payload, listener.topic)
         }
 
         // Cleanup
@@ -354,7 +354,7 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<String>(), any<SpecificRecord>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<String>(), any<SpecificRecord>(), any<String>())
         } coAnswers {
             latch.countDown()
         }
@@ -378,7 +378,7 @@ class EventListenerIntegrationTest {
 
         // Verify dispatchService was called with correct parameters
         coVerify(exactly = 1) {
-            spiedDispatchService.dispatchEvents(key, payload, listener)
+            spiedDispatchService.dispatchEvents(key, payload, listener.topic)
         }
 
         // Cleanup
@@ -437,7 +437,7 @@ class EventListenerIntegrationTest {
         )
 
         coEvery {
-            spiedDispatchService.dispatchEvents(any<JsonNode>(), any<JsonNode>(), any<EventListener>())
+            spiedDispatchService.dispatchEvents(any<JsonNode>(), any<JsonNode>(), any<String>())
         } coAnswers {
             latch.countDown()
         }
