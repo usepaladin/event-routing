@@ -8,6 +8,7 @@ import java.io.Serializable
 sealed interface ProducerConfig : Serializable, Configurable {
     val brokerType: BrokerType
     var allowAsync: Boolean
+    var requireKey: Boolean
     var retryMaxAttempts: Int
     var retryBackoff: Int
     var connectionTimeout: Int

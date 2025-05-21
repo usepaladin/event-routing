@@ -24,6 +24,7 @@ object ProducerCreationFactory {
         cluster: KafkaCluster,
         keySerializationFormat: Broker.ProducerFormat,
         valueSerializationFormat: Broker.ProducerFormat,
+        requireKey: Boolean = false,
         config: KafkaProducerConfig? = null,
     ): ProducerCreationRequest {
 
@@ -64,6 +65,7 @@ object ProducerCreationFactory {
         name: String,
         cluster: MessageBrokerCluster<LocalStackContainer, SqsClient>,
         valueSerializationFormat: Broker.ProducerFormat,
+        requireKey: Boolean = false,
         config: SQSProducerConfig? = null,
     ): ProducerCreationRequest {
         val defaultSqsProducerConfig = config ?: SQSProducerConfig(
@@ -96,8 +98,9 @@ object ProducerCreationFactory {
         name: String,
         cluster: MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory>,
         valueSerializationFormat: Broker.ProducerFormat,
+        requireKey: Boolean = false,
+        queue: String,
         config: RabbitProducerConfig? = null,
-        queue: String
     ): ProducerCreationRequest {
 
         val defaultRabbitProducerConfig = config ?: RabbitProducerConfig(

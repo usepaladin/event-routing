@@ -10,6 +10,7 @@ data class KafkaProducerConfig(
     var enableSchemaRegistry: Boolean = false,
     // Synchronous or Asynchronous sending of messages
     override var allowAsync: Boolean = true,
+    override var requireKey: Boolean = true,
     override var retryMaxAttempts: Int = 3,
     override var retryBackoff: Int = 1000,
     override var connectionTimeout: Int = 10000,

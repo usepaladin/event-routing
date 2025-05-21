@@ -6,6 +6,7 @@ import paladin.router.util.Configurable
 data class SQSProducerConfig(
     override val brokerType: Broker.BrokerType = Broker.BrokerType.SQS,
     override var allowAsync: Boolean = true,
+    override var requireKey: Boolean = false,
     override var retryMaxAttempts: Int = 3,
     override var retryBackoff: Int = 1000,
     override var connectionTimeout: Int = 10000,

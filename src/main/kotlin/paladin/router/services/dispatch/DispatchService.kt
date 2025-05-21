@@ -24,7 +24,7 @@ class DispatchService(
     override val coroutineContext: CoroutineContext
         get() = dispatcher + job
 
-    fun <K, V> dispatchEvents(key: K, value: V, topic: String) {
+    fun <K, V> dispatchEvents(key: K?, value: V, topic: String) {
         launch {
             val dispatchTopics: ConcurrentHashMap<MessageDispatcher, DispatchTopic> =
                 topicService.getDispatchersForTopic(topic)
@@ -45,14 +45,29 @@ class DispatchService(
         }
     }
 
-    private suspend fun <K, V> dispatchToBroker(key: K, value: V, topic: DispatchTopic, dispatcher: MessageDispatcher) {
+    private suspend fun <K, V> dispatchToBroker(
+        key: K?,
+        value: V,
+        topic: DispatchTopic,
+        dispatcher: MessageDispatcher
+    ) {
         repeat(
             dispatcher.producerConfig.retryMaxAttempts
         ) { retryAttempt ->
             if (dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected) {
 
                 try {
-                    dispatcher.dispatch(key, value, topic)
+                    dispatcher.producerConfig.requireKey.let {
+                        if (it) {
+                            if (key == null) {
+                                throw IllegalStateException("Dispatch Service => ${dispatcher.identifier()} => Key is required but was null")
+                            }
+                            dispatcher.dispatch(key, value, topic)
+                            return
+                        }
+                        dispatcher.dispatch(value, topic)
+                    }
+
                     return
                 } catch (ex: Exception) {
                     logger.warn { "Dispatch Service => ${dispatcher.identifier()} => Retry Attempt $retryAttempt/\$${dispatcher.producerConfig.retryMaxAttempts} => Error occurred during dispatch => ${ex.message}" }

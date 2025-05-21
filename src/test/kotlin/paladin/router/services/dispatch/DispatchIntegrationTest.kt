@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,8 +14,8 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 import paladin.router.enums.configuration.Broker
+import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
-import paladin.router.models.listener.EventListener
 import paladin.router.services.producers.ProducerService
 import util.TestLogAppender
 import util.brokers.ProducerCreationFactory
@@ -221,40 +221,44 @@ class DispatchIntegrationTest {
             name = "kafka-producer-1",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
             keySerializationFormat = Broker.ProducerFormat.STRING,
-            valueSerializationFormat = Broker.ProducerFormat.STRING
+            valueSerializationFormat = Broker.ProducerFormat.STRING,
+            requireKey = true
         )
 
         val kafkaProducer2 = ProducerCreationFactory.fromKafka(
             name = "kafka-producer-2",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_2),
             keySerializationFormat = Broker.ProducerFormat.STRING,
-            valueSerializationFormat = Broker.ProducerFormat.STRING
+            valueSerializationFormat = Broker.ProducerFormat.STRING,
+            requireKey = true
         )
 
         val sqsProducer = ProducerCreationFactory.fromSqs(
             name = "sqs-producer-1",
             cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
-            valueSerializationFormat = Broker.ProducerFormat.STRING
+            valueSerializationFormat = Broker.ProducerFormat.STRING,
+            requireKey = false
         )
 
         val rabbitProducer = ProducerCreationFactory.fromRabbit(
             name = "rabbit-producer-1",
             cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.STRING,
-            queue = rabbitQueue1
+            queue = rabbitQueue1,
+            requireKey = false
         )
 
         // Set up Dispatchers and assert successful connection with given configuration properties
-        producerService.registerProducer(kafkaProducer1).also {
+        val kafka1Dispatcher = producerService.registerProducer(kafkaProducer1).also {
             assertTrue { it.testConnection() }
         }
-        producerService.registerProducer(kafkaProducer2).also {
+        val kafka2Dispatcher = producerService.registerProducer(kafkaProducer2).also {
             assertTrue { it.testConnection() }
         }
-        producerService.registerProducer(sqsProducer).also {
+        val sqsDispatcher = producerService.registerProducer(sqsProducer).also {
             assertTrue { it.testConnection() }
         }
-        producerService.registerProducer(rabbitProducer).also {
+        val rabbitDispatcher = producerService.registerProducer(rabbitProducer).also {
             assertTrue { it.testConnection() }
         }
 
@@ -288,9 +292,18 @@ class DispatchIntegrationTest {
         dispatchService.addDispatcherTopic(sqsProducerDispatchTopicRequest)
         dispatchService.addDispatcherTopic(rabbitProducerDispatchTopicRequest)
 
-        // Mock an event listener dispatching a message to linked dispatchers
-        val eventListener = mockk<EventListener>(relaxed = true)
+        // Mock an Event Listener dispatching an event
+        dispatchService.dispatchEvents(
+            key = "test-key",
+            value = "test-value",
+            topic = sourceTopic,
+        )
+
         // Assert message has been dispatched
+        verify(exactly = 1) { kafka1Dispatcher.dispatch("test-key", "test-value", any<DispatchTopic>()) }
+        verify(exactly = 0) { kafka2Dispatcher.dispatch(any<String>(), any<String>(), any<DispatchTopic>()) }
+        verify(exactly = 1) { sqsDispatcher.dispatch("test-value", any<DispatchTopic>()) }
+        verify(exactly = 1) { rabbitDispatcher.dispatch("test-value", any<DispatchTopic>()) }
         // Assert message was received by testContainer broker
     }
 }
