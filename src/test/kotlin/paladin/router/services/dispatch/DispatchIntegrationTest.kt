@@ -17,6 +17,7 @@ import paladin.router.enums.configuration.Broker
 import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.services.producers.ProducerService
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import util.TestLogAppender
 import util.brokers.ProducerCreationFactory
 import util.kafka.KafkaClusterManager
@@ -96,106 +97,6 @@ class DispatchIntegrationTest {
         }
 
     }
-
-//    @Test
-//    fun `test send and receive messages across multiple SQS, RabbitMQ, and Kafka clusters`(
-//        @Qualifier("sqsCluster1Client") sqsCluster1Client: SqsClient,
-//        @Qualifier("rabbitmqCluster1Template") rabbitmqCluster1Template: RabbitTemplate,
-//        @Qualifier("kafkaCluster1Template") kafkaCluster1Template: KafkaTemplate<String, String>,
-//        @Qualifier("kafkaCluster2Template") kafkaCluster2Template: KafkaTemplate<String, String>
-//    ) {
-//        val sqsTopic1 = "sqs-test-topic-1"
-//        val rabbitTopic1 = "rabbit-test-topic-1"
-//        val kafkaTopic1 = "kafka-test-topic-1"
-//        val kafkaTopic2 = "kafka-test-topic-2"
-//
-//        // Create SQS queues
-//        val sqsQueue1 = sqsClusterManager.createQueue(SQS_CLUSTER_1, sqsTopic1)
-//        val rabbitQueue1 = rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, rabbitTopic1)
-//        kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, kafkaTopic1)
-//        kafkaClusterManager.createTopic(KAFKA_CLUSTER_2, kafkaTopic2)
-//
-//        // Send messages to SQS
-//        val sqsMessage1 = "SQS Message for Cluster 1"
-//        sqsCluster1Client.sendMessage(
-//            SendMessageRequest.builder()
-//                .queueUrl(sqsQueue1)
-//                .messageBody(sqsMessage1)
-//                .build()
-//        )
-//
-//        // Send messages to RabbitMQ
-//        val rabbitMessage1 = "RabbitMQ Message for Cluster 1"
-//        rabbitmqCluster1Template.convertAndSend("", rabbitQueue1, rabbitMessage1)
-//
-//        // Send messages to Kafka
-//        val kafkaMessage1 = "Kafka Message for Cluster 1"
-//        val kafkaMessage2 = "Kafka Message for Cluster 2"
-//        kafkaCluster1Template.send(kafkaTopic1, kafkaMessage1).get()
-//        kafkaCluster2Template.send(kafkaTopic2, kafkaMessage2).get()
-//
-//        // Receive messages from SQS
-//        val sqsMessages1 = sqsCluster1Client.receiveMessage(
-//            ReceiveMessageRequest.builder()
-//                .queueUrl(sqsQueue1)
-//                .maxNumberOfMessages(1)
-//                .waitTimeSeconds(10)
-//                .build()
-//        ).messages()
-//
-//        // Receive messages from RabbitMQ
-//        val receivedRabbitMessage1 = rabbitmqCluster1Template.receiveAndConvert(rabbitQueue1, 10000) as String?
-//
-//        // Receive messages from Kafka
-//        val consumerProps1 = mapOf(
-//            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
-//
-//            "group.id" to "test-group-1",
-//            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-//            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-//            "auto.offset.reset" to "earliest"
-//        )
-//        val consumerProps2 = mapOf(
-//            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).container.bootstrapServers,
-//            "group.id" to "test-group-2",
-//            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-//            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-//            "auto.offset.reset" to "earliest"
-//        )
-//        val consumer1 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps1)
-//        val consumer2 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps2)
-//        consumer1.subscribe(listOf(kafkaTopic1))
-//        consumer2.subscribe(listOf(kafkaTopic2))
-//
-//        val kafkaRecords1 = consumer1.poll(Duration.ofSeconds(10))
-//        val kafkaRecords2 = consumer2.poll(Duration.ofSeconds(10))
-//
-//        // Assert SQS messages
-//        assert(sqsMessages1.size == 1)
-//        assertEquals(sqsMessages1.first().body(), sqsMessage1)
-//
-//        // Assert RabbitMQ messages
-//        receivedRabbitMessage1.let {
-//            assertNotNull(it)
-//            assertEquals(it, rabbitMessage1)
-//        }
-//        assert(receivedRabbitMessage1 != null)
-//        assertEquals(receivedRabbitMessage1, rabbitMessage1)
-//
-//        kafkaRecords1.let {
-//            assert(it.count() == 1)
-//            assertEquals(it.first().value(), kafkaMessage1)
-//        }
-//
-//        kafkaRecords2.let {
-//            assert(it.count() == 1)
-//            assertEquals(it.first().value(), kafkaMessage2)
-//        }
-//
-//        // Clean up Kafka consumers
-//        consumer1.close()
-//        consumer2.close()
-//    }
 
     @Test
     fun `handle dispatch to multiple receiver brokers`(
@@ -304,6 +205,72 @@ class DispatchIntegrationTest {
         verify(exactly = 0) { kafka2Dispatcher.dispatch(any<String>(), any<String>(), any<DispatchTopic>()) }
         verify(exactly = 1) { sqsDispatcher.dispatch("test-value", any<DispatchTopic>()) }
         verify(exactly = 1) { rabbitDispatcher.dispatch("test-value", any<DispatchTopic>()) }
+
         // Assert message was received by testContainer broker
+        val sqsClient = sqsClusterManager.getCluster(SQS_CLUSTER_1).client
+        val rabbitClient = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1).client
+        val kafka1Client = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).client
+
+
+        val sqsMessages1 = sqsClient.receiveMessage(
+            ReceiveMessageRequest.builder()
+                .queueUrl(sqsQueue1)
+                .maxNumberOfMessages(1)
+                .waitTimeSeconds(10)
+                .build()
+        ).messages()
+
+        // Receive messages from RabbitMQ
+        val receivedRabbitMessage1 = rabbitmqCluster1Template.receiveAndConvert(rabbitQueue1, 10000) as String?
+
+        // Receive messages from Kafka
+        val consumerProps1 = mapOf(
+            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
+
+            "group.id" to "test-group-1",
+            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "auto.offset.reset" to "earliest"
+        )
+        val consumerProps2 = mapOf(
+            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).container.bootstrapServers,
+            "group.id" to "test-group-2",
+            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "auto.offset.reset" to "earliest"
+        )
+        val consumer1 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps1)
+        val consumer2 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps2)
+        consumer1.subscribe(listOf(kafkaTopic1))
+        consumer2.subscribe(listOf(kafkaTopic2))
+
+        val kafkaRecords1 = consumer1.poll(Duration.ofSeconds(10))
+        val kafkaRecords2 = consumer2.poll(Duration.ofSeconds(10))
+
+        // Assert SQS messages
+        assert(sqsMessages1.size == 1)
+        assertEquals(sqsMessages1.first().body(), sqsMessage1)
+
+        // Assert RabbitMQ messages
+        receivedRabbitMessage1.let {
+            assertNotNull(it)
+            assertEquals(it, rabbitMessage1)
+        }
+        assert(receivedRabbitMessage1 != null)
+        assertEquals(receivedRabbitMessage1, rabbitMessage1)
+
+        kafkaRecords1.let {
+            assert(it.count() == 1)
+            assertEquals(it.first().value(), kafkaMessage1)
+        }
+
+        kafkaRecords2.let {
+            assert(it.count() == 1)
+            assertEquals(it.first().value(), kafkaMessage2)
+        }
+
+        // Clean up Kafka consumers
+        consumer1.close()
+        consumer2.close()
     }
 }
