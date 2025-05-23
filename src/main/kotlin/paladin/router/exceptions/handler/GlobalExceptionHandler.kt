@@ -11,17 +11,21 @@ import java.io.StringWriter
 
 @ControllerAdvice
 class GlobalExceptionHandler {
-    fun appendStackTraceToCustomError(ex: Throwable, err: ErrorResponse): Unit{
+    fun appendStackTraceToCustomError(ex: Throwable, err: ErrorResponse): Unit {
         val stringWriter = StringWriter()
         ex.printStackTrace(PrintWriter(stringWriter))
         err.stackTrace = stringWriter.toString()
     }
 
-    fun handleException(ex: Throwable, status: HttpStatus, includeStackTrace: Boolean = false): ResponseEntity<ErrorResponse> {
+    fun handleException(
+        ex: Throwable,
+        status: HttpStatus,
+        includeStackTrace: Boolean = false
+    ): ResponseEntity<ErrorResponse> {
         val errorMessage = ex.message ?: "Unknown error occurred"
         val errorResponse = ErrorResponse(status, errorMessage)
 
-        if(includeStackTrace){
+        if (includeStackTrace) {
             appendStackTraceToCustomError(ex, errorResponse)
         }
         return ResponseEntity.status(status).body(errorResponse)
@@ -37,8 +41,8 @@ class GlobalExceptionHandler {
         return handleException(ex, HttpStatus.UNAUTHORIZED, true)
     }
 
-    @ExceptionHandler(BrokerNotFoundException::class)
-    fun handleBrokerNotFoundException(ex: BrokerNotFoundException): ResponseEntity<ErrorResponse> {
+    @ExceptionHandler(ProducerNotFoundException::class)
+    fun handleProducerNotFoundException(ex: ProducerNotFoundException): ResponseEntity<ErrorResponse> {
         return handleException(ex, HttpStatus.NOT_FOUND, true)
     }
 

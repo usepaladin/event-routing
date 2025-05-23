@@ -1,5 +1,11 @@
 package util.mock
 
+import paladin.avro.ChangeEventData
+import paladin.avro.ChangeEventOperation
+import paladin.avro.EventType
+import paladin.avro.MockKeyAv
+import java.util.*
+
 data class Operation(val id: String, val operation: OperationType) {
     enum class OperationType {
         CREATE,
@@ -53,3 +59,68 @@ data class User(val name: String, val age: Int, val email: String? = null) {
     }
 }
 
+
+fun mockAvroKey() = MockKeyAv(
+    UUID.randomUUID().toString(),
+    EventType.CREATE
+)
+
+fun mockAvroPayload() = ChangeEventData(
+    ChangeEventOperation.CREATE,
+    null,
+    mapOf(
+        "id" to "123",
+        "name" to "Test Name",
+        "description" to "Test Description"
+    ),
+    mapOf(
+        "id" to "123",
+        "name" to "Test Name",
+        "description" to "Test Description"
+    ),
+    Date().toInstant().epochSecond,
+    "user"
+)
+
+/**
+ * Modified version of the ChangeEventData Avro schema to include a subset of the original fields
+ *
+ * Includes fields: operation, before, and after
+ * Negates fields: table, source, timestamp
+ */
+fun mockModifiedAvroSchema() = """{
+        "type": "record",
+        "name": "ChangeEventData",
+        "fields": [
+          {
+            "name": "operation",
+            "type": {
+              "type": "enum",
+              "name": "ChangeEventOperation",
+              "symbols": [
+                "CREATE",
+                "UPDATE",
+                "DELETE",
+                "SNAPSHOT",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "before",
+            "type": ["null",{
+              "type": "map",
+              "values": "string"
+            }],
+            "default": null
+          },
+          {
+            "name": "after",
+            "type": ["null",{
+              "type": "map",
+              "values": "string"
+            }],
+            "default": null
+          }
+        ]
+      }""".trimIndent()

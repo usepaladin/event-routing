@@ -4,18 +4,14 @@ import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import paladin.router.exceptions.BrokerNotFoundException
+import paladin.router.exceptions.ProducerNotFoundException
 import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.models.dispatch.MessageDispatcher
-import paladin.router.models.listener.EventListener
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.pow
-
-private const val MAX_RETRY_ATTEMPTS: Int = 3
-private const val MIN_RETRY_BACKOFF: Long = 1000L // 1 second
 
 @Service
 class DispatchService(
@@ -23,25 +19,25 @@ class DispatchService(
     private val logger: KLogger,
     @Qualifier("coroutineDispatcher") private val dispatcher: CoroutineDispatcher
 ) : CoroutineScope {
-    private val clientBrokers = ConcurrentHashMap<String, MessageDispatcher>()
+    private val messageDispatchers = ConcurrentHashMap<String, MessageDispatcher>()
     val job = SupervisorJob()
     override val coroutineContext: CoroutineContext
         get() = dispatcher + job
 
-    fun <K, V> dispatchEvents(key: K, value: V, listener: EventListener) {
+    fun <K, V> dispatchEvents(key: K?, value: V, topic: String) {
         launch {
             val dispatchTopics: ConcurrentHashMap<MessageDispatcher, DispatchTopic> =
-                topicService.getDispatchersForTopic(listener.topic)
-                    ?: throw IllegalStateException("Dispatch Service => No dispatchers found for topic: ${listener.topic}")
+                topicService.getDispatchersForTopic(topic)
+                    ?: throw IllegalStateException("Dispatch Service => No dispatchers found for topic: $topic")
 
             dispatchTopics.asIterable().map {
                 async {
-                    val (dispatcher, topic) = it
+                    val (dispatcher, dispatchTopic) = it
                     try {
-                        logger.info { "Dispatch Service => Dispatching event to dispatcher: ${dispatcher.broker.brokerName} => Topic: ${topic.destinationTopic} => Key: $key" }
-                        dispatchToBroker(key, value, topic, dispatcher)
+                        logger.info { "Dispatch Service => Dispatching event via ${dispatcher.identifier()} => Topic: ${dispatchTopic.destinationTopic} => Key: $key" }
+                        dispatchToBroker(key, value, dispatchTopic, dispatcher)
                     } catch (e: Exception) {
-                        logger.error(e) { "Dispatch Service => Error dispatching event => Broker : ${dispatcher.broker.brokerType} - ${dispatcher.broker.brokerName} => Message: ${e.message}" }
+                        logger.error(e) { "Dispatch Service => Error dispatching event => ${dispatcher.identifier()} => Message: ${e.message}" }
                         // Todo: Handle DLQ logic here
                     }
                 }
@@ -49,71 +45,103 @@ class DispatchService(
         }
     }
 
-    private suspend fun <K, V> dispatchToBroker(key: K, value: V, topic: DispatchTopic, dispatcher: MessageDispatcher) {
-        // If the dispatcher is not connected, we will retry the dispatch for a short period of time before sending to DLQ
+    private suspend fun <K, V> dispatchToBroker(
+        key: K?,
+        value: V,
+        topic: DispatchTopic,
+        dispatcher: MessageDispatcher
+    ) {
         repeat(
-            MAX_RETRY_ATTEMPTS
+            dispatcher.producerConfig.retryMaxAttempts
         ) { retryAttempt ->
             if (dispatcher.connectionState.value == MessageDispatcher.MessageDispatcherState.Connected) {
-                dispatcher.dispatch(key, value, topic)
-                return
+
+                try {
+                    dispatcher.producerConfig.requireKey.let {
+                        if (it) {
+                            if (key == null) {
+                                throw IllegalStateException("Dispatch Service => ${dispatcher.identifier()} => Key is required but was null")
+                            }
+                            dispatcher.dispatch(key, value, topic)
+                            return
+                        }
+                        dispatcher.dispatch(value, topic)
+                    }
+
+                    return
+                } catch (ex: Exception) {
+                    logger.warn { "Dispatch Service => ${dispatcher.identifier()} => Retry Attempt $retryAttempt/\$${dispatcher.producerConfig.retryMaxAttempts} => Error occurred during dispatch => ${ex.message}" }
+                }
+
+            } else {
+                logger.warn { "Dispatch Service => ${dispatcher.identifier()} => Retry attempt $retryAttempt/\$${dispatcher.producerConfig.retryMaxAttempts} => Dispatcher is not connected at time of event production" }
             }
 
-            logger.warn { "Dispatch Service => Dispatcher Name: ${dispatcher.broker.brokerName} => Dispatcher is not connected at time of event production => Attempting Retry attempt $retryAttempt/$MAX_RETRY_ATTEMPTS" }
-            delay(MIN_RETRY_BACKOFF * (2F).pow(retryAttempt).toLong())
+
+            delay(dispatcher.producerConfig.retryBackoff * (2F).pow(retryAttempt).toLong())
         }
 
+
         // Max retries exhausted, throw exception and send to DLQ for manual handling
-        logger.error { "Dispatch Service => Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts" }
-        throw IOException("Failed to dispatch event after $MAX_RETRY_ATTEMPTS attempts")
+        throw IOException("Failed to dispatch event after ${dispatcher.producerConfig.retryMaxAttempts} attempts")
     }
 
-
-    fun setDispatcher(brokerName: String, dispatcher: MessageDispatcher) {
-        clientBrokers[brokerName] = dispatcher
+    /**
+     * Initialise a Dispatcher (When starting up the Application).
+     * Fetch all associated Dispatch topics and register them with the dispatcher
+     */
+    fun init(dispatcher: MessageDispatcher) {
+        dispatcher.run {
+            messageDispatchers[this.producer.producerName] = this
+            logger.info { "Dispatch Service => Dispatcher ${this.identifier()} registered successfully" }
+            topicService.init(this)
+        }
     }
 
-    fun removeDispatcher(brokerName: String) {
-        clientBrokers.remove(brokerName)
+    fun setDispatcher(producerName: String, dispatcher: MessageDispatcher) {
+        messageDispatchers[producerName] = dispatcher
     }
 
-    fun getDispatcher(brokerName: String): MessageDispatcher? {
-        return clientBrokers[brokerName]
+    fun removeDispatcher(producerName: String) {
+        messageDispatchers.remove(producerName)
+    }
+
+    fun getDispatcher(producerName: String): MessageDispatcher? {
+        return messageDispatchers[producerName]
     }
 
     fun getAllDispatchers(): List<MessageDispatcher> {
-        return clientBrokers.values.toList()
+        return messageDispatchers.values.toList()
     }
 
     fun addDispatcherTopic(dispatcherTopic: DispatchTopicRequest): DispatchTopic {
-        clientBrokers[dispatcherTopic.dispatcher].let {
+        messageDispatchers[dispatcherTopic.dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
+                throw ProducerNotFoundException("Dispatcher for topic ${dispatcherTopic.dispatcher} not found")
             }
-
 
             return topicService.addDispatcherTopic(
                 it,
-                DispatchTopic.fromRequest(dispatcherTopic)
+                DispatchTopic.fromRequest(dispatcherTopic, it.producer.id)
             )
         }
     }
 
     fun removeDispatcherFromTopic(topic: String, dispatcher: String): Unit {
-        clientBrokers[dispatcher].let {
+        messageDispatchers[dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic $topic not found")
+                throw ProducerNotFoundException("Dispatcher for topic $topic not found")
             }
             topicService.removeDispatcherFromTopic(topic, it)
         }
     }
 
     fun editDispatcherForTopic(topic: DispatchTopicRequest): DispatchTopic {
-        clientBrokers[topic.dispatcher].let {
+        messageDispatchers[topic.dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
+                throw ProducerNotFoundException("Dispatcher for topic ${topic.dispatcher} not found")
             }
-            return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic))
+            return topicService.updateDispatcherTopic(it, DispatchTopic.fromRequest(topic, it.producer.id))
         }
     }
 
@@ -126,9 +154,9 @@ class DispatchService(
     }
 
     fun getTopicsForDispatcher(dispatcher: String): List<DispatchTopic> {
-        clientBrokers[dispatcher].let {
+        messageDispatchers[dispatcher].let {
             if (it == null) {
-                throw BrokerNotFoundException("Dispatcher for topic $dispatcher not found")
+                throw ProducerNotFoundException("Dispatcher for topic $dispatcher not found")
             }
             return topicService.getAllTopicsForDispatcher(it)
         }

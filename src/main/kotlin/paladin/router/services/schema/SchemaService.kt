@@ -4,12 +4,22 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.github.oshai.kotlinlogging.KLogger
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.generic.GenericDatumWriter
 import org.apache.avro.generic.GenericRecord
+import org.apache.avro.io.DatumReader
+import org.apache.avro.io.DatumWriter
+import org.apache.avro.io.DecoderFactory
+import org.apache.avro.io.EncoderFactory
 import org.apache.avro.specific.SpecificRecord
 import org.springframework.stereotype.Service
+import paladin.router.enums.configuration.Broker
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 @Service
@@ -18,6 +28,65 @@ class SchemaService(
     private val logger: KLogger
 ) {
 
+    /**
+     * Converts a payload to the appropriate format based on the topic's serialisation technique
+     * Also utilises any provided schema to parse the message (When using Json or Avro)
+     *
+     * @param payload The value being transformed
+     * @param format The format of the payload
+     * @param schema Any associated schema to validate and transform the payload into a specific format
+     *
+     * @return A transformed value
+     */
+    fun <T> convertToFormat(payload: T, format: Broker.ProducerFormat, schema: String?): Any {
+        return when (format) {
+            Broker.ProducerFormat.STRING -> parseToString(payload)
+            Broker.ProducerFormat.JSON -> {
+                if (schema == null) {
+                    return parseToJson(payload)
+
+                }
+                return parseToJson(schema, payload)
+            }
+
+            Broker.ProducerFormat.AVRO -> {
+                if (schema == null) {
+                    throw IllegalArgumentException("Schema cannot be null for Avro format")
+                }
+                return parseToAvro(schema, payload)
+            }
+        }
+    }
+
+    /**
+     * Serializes the payload to an Avro byte array using the provided Avro schema.
+     */
+    @Throws(IOException::class)
+    fun avroToByteArray(record: GenericRecord): ByteArray {
+        try {
+            val output = ByteArrayOutputStream()
+            val writer: DatumWriter<GenericRecord> = GenericDatumWriter(record.schema)
+            val encoder = EncoderFactory.get().binaryEncoder(output, null)
+            writer.write(record, encoder)
+            encoder.flush()
+            return output.toByteArray()
+        } catch (e: Exception) {
+            logger.error(e) { "Error encoding payload to Avro bytes: ${e.message}" }
+            throw e
+        }
+    }
+
+    fun byteArrayToAvro(schema: Schema, payload: ByteArray): GenericRecord {
+        try {
+            val reader: DatumReader<GenericRecord> = GenericDatumReader(schema)
+            val input = ByteArrayInputStream(payload)
+            val decoder = DecoderFactory.get().binaryDecoder(input, null)
+            return reader.read(null, decoder)
+        } catch (e: Exception) {
+            logger.error(e) { "Error decoding Avro bytes to payload: ${e.message}" }
+            throw e
+        }
+    }
 
     /**
      * Parses the Payload into an Avro GenericRecord using the provided Avro schema.
@@ -116,15 +185,25 @@ class SchemaService(
         }
     }
 
+    /**
+     * Converts the payload to a string without JSON serialization for simple types.
+     * For complex types or Avro records, serializes to a string representation of the data.
+     */
     fun <T> parseToString(payload: T): String {
-        // When handling Avro messages, we would need to ensure we only convert the payload to a string, not any associated metadata included in the object (ie. Schema)
-        if (payload is SpecificRecord) {
-            val avroPayload = destructureAvro(payload as GenericRecord)
-            return objectMapper.writeValueAsString(avroPayload)
-        }
+        return when (payload) {
+            is String -> payload // Return raw string without JSON serialization
+            is SpecificRecord -> {
+                val avroPayload = destructureAvro(payload as GenericRecord)
+                objectMapper.writeValueAsString(avroPayload)
+            }
 
-        return objectMapper.writeValueAsString(payload)
+            else -> {
+                // For other types, convert to string representation without quotes if possible
+                payload?.toString() ?: ""
+            }
+        }
     }
+
 
     private fun <T> destructureClass(payload: T): Map<String, Any?> {
         if (payload is SpecificRecord) {

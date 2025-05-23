@@ -10,12 +10,12 @@ data class EventListener(
     var topic: String,
     var runOnStartup: Boolean = false,
     var groupId: String,
-    var key: Broker.BrokerFormat,
-    var value: Broker.BrokerFormat,
+    var key: Broker.ProducerFormat,
+    var value: Broker.ProducerFormat,
     val config: AdditionalConsumerProperties,
     private val dispatchService: DispatchService
 ) {
     fun processMessage(message: ConsumerRecord<Any, Any>) {
-        dispatchService.dispatchEvents(message.key(), message.value(), this)
+        dispatchService.dispatchEvents(message.key(), message.value(), this.topic)
     }
 }

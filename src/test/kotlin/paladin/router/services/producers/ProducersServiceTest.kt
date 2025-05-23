@@ -1,4 +1,4 @@
-package paladin.router.services.brokers
+package paladin.router.services.producers
 
 import io.github.oshai.kotlinlogging.KLogger
 import io.mockk.impl.annotations.MockK
@@ -7,20 +7,20 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import paladin.router.configuration.properties.EncryptionConfigurationProperties
-import paladin.router.repository.MessageBrokerRepository
+import paladin.router.repository.MessageProducerRepository
 import paladin.router.services.dispatch.DispatchService
 import paladin.router.services.encryption.EncryptionService
 import paladin.router.util.factory.MessageDispatcherFactory
 import util.TestUtilServices
 
 @ExtendWith(MockKExtension::class)
-class BrokersServiceTest {
+class ProducersServiceTest {
 
     @MockK
     private lateinit var logger: KLogger
 
     @MockK
-    private lateinit var repository: MessageBrokerRepository
+    private lateinit var repository: MessageProducerRepository
 
     @MockK
     private lateinit var dispatchService: DispatchService
@@ -37,11 +37,11 @@ class BrokersServiceTest {
     @MockK
     private lateinit var messageDispatchServiceTest: MessageDispatcherFactory
 
-    private lateinit var brokerService: BrokerService
+    private lateinit var producerService: ProducerService
 
     @BeforeEach
     fun setUp() {
-        brokerService = BrokerService(
+        producerService = ProducerService(
             repository,
             dispatchService,
             encryptionService,

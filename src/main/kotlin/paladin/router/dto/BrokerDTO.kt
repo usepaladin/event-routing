@@ -1,19 +1,20 @@
 package paladin.router.dto
 
-import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.EncryptedProducerConfig
+import paladin.router.models.configuration.producers.core.ProducerConfig
 
-open class BrokerDTO(
-    val broker: MessageBroker,
-    val config: BrokerConfig,
-    val authConfig: EncryptedBrokerConfig,
-){
-    companion object Factory{
-        fun fromEntity(broker: MessageBroker, config: BrokerConfig, authConfig: EncryptedBrokerConfig) = BrokerDTO(
-            broker = broker,
-            config = config,
-            authConfig = authConfig,
-        )
+open class ProducerDTO(
+    val producer: MessageProducer,
+    val config: ProducerConfig,
+    val connectionConfig: EncryptedProducerConfig,
+) {
+    companion object Factory {
+        fun fromEntity(producer: MessageProducer, config: ProducerConfig, connectionConfig: EncryptedProducerConfig) =
+            ProducerDTO(
+                producer = producer,
+                config = config,
+                connectionConfig = connectionConfig,
+            )
     }
 }

@@ -12,7 +12,13 @@ object SchemaRegistryFactory {
                 registerSchema(client, schema, topic, type)
             }
         }
+    }
 
+    fun init(schemaRegistry: CachedSchemaRegistryClient, schemas: List<SchemaRegistrationOperation>) {
+        schemas.forEach {
+            val (schema, topic, type) = it
+            registerSchema(schemaRegistry, schema, topic, type)
+        }
     }
 
     private fun registerSchema(

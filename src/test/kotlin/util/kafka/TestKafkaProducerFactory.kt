@@ -5,19 +5,14 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.testcontainers.kafka.ConfluentKafkaContainer
-import paladin.avro.ChangeEventData
-import paladin.avro.ChangeEventOperation
-import paladin.avro.EventType
-import paladin.avro.MockKeyAv
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.factory.SerializerFactory
-import java.util.*
 
 object TestKafkaProducerFactory {
     inline fun <reified K : Any, reified V : Any> createKafkaTemplate(
         container: ConfluentKafkaContainer,
-        keyFormat: Broker.BrokerFormat,
-        valueFormat: Broker.BrokerFormat,
+        keyFormat: Broker.ProducerFormat,
+        valueFormat: Broker.ProducerFormat,
         schemaRegistryUrl: String? = null
     ): KafkaTemplate<K, V> {
         val keySerializerClass = SerializerFactory.fromFormat(keyFormat, !schemaRegistryUrl.isNullOrEmpty())
@@ -41,27 +36,5 @@ object TestKafkaProducerFactory {
         val producerFactory = DefaultKafkaProducerFactory<K, V>(producerProps)
         return KafkaTemplate(producerFactory)
     }
-
-    fun mockAvroKey() = MockKeyAv(
-        UUID.randomUUID().toString(),
-        EventType.CREATE
-    )
-
-    fun mockAvroPayload() = ChangeEventData(
-        ChangeEventOperation.CREATE,
-        null,
-        mapOf(
-            "id" to "123",
-            "name" to "Test Name",
-            "description" to "Test Description"
-        ),
-        mapOf(
-            "id" to "123",
-            "name" to "Test Name",
-            "description" to "Test Description"
-        ),
-        Date().toInstant().epochSecond,
-        "user"
-    )
 
 }

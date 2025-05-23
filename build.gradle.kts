@@ -55,6 +55,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-core:${jacksonVersion}")
     implementation("com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${jacksonVersion}")
+    implementation("io.micrometer:micrometer-core:1.12.0")
 
     // Logging
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
@@ -65,10 +66,13 @@ dependencies {
     implementation("io.confluent:kafka-avro-serializer:7.9.0")
     implementation("io.confluent:kafka-json-schema-serializer:7.4.0")
 
+
     // Message Broker Implementations
-    implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit:4.2.1")
+    implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+    implementation("software.amazon.awssdk:sqs:2.31.40")
 
     implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
@@ -79,13 +83,10 @@ dependencies {
     implementation("io.hypersistence:hypersistence-utils-hibernate-63:3.9.2")
 
     // Testing Libraries
-    testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("io.confluent:kafka-schema-registry-client:7.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:rabbitmq")
-    testImplementation("org.testcontainers:kafka")
-    testImplementation("org.testcontainers:postgresql")
+
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -93,6 +94,14 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation("org.springframework.cloud:spring-cloud-stream-test-binder")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Test Containers
+    testImplementation("org.testcontainers:rabbitmq")
+    testImplementation("org.testcontainers:kafka")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:localstack:1.20.2")
+
 
     // Mock Avro Models for Testing
     testImplementation("paladin.schemas:models:0.0.1-SNAPSHOT")

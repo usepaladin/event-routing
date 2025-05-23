@@ -21,6 +21,7 @@ object EntityFactory {
     fun DispatchTopic.toEntity(): DispatchTopicConfigurationEntity {
         return DispatchTopicConfigurationEntity(
             id = this.id,
+            producerId = this.producerId,
             sourceTopic = this.sourceTopic,
             destinationTopic = this.destinationTopic,
             keyFormat = this.key,

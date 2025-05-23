@@ -1,6 +1,6 @@
 encryption:
   key: ${ENCRYPTION_KEY:default-key}
-  require-data-encryption: true
+  require-data-encryption: false
 spring:
   sql:
     init:

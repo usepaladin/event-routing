@@ -1,8 +1,8 @@
-package paladin.router.models.configuration.brokers.auth
+package paladin.router.models.configuration.producers.auth
 
 import paladin.router.util.Configurable
 import java.io.Serializable
 
-interface EncryptedBrokerConfig : Serializable, Configurable {
+interface EncryptedProducerConfig : Serializable, Configurable {
     override fun updateConfiguration(config: Configurable): Configurable
 }

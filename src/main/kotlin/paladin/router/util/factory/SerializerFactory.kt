@@ -8,19 +8,24 @@ import paladin.router.enums.configuration.Broker
 
 
 object SerializerFactory {
-    fun fromFormat(format: Broker.BrokerFormat?, enforceSchema: Boolean = false): String {
+    fun fromFormat(format: Broker.ProducerFormat?, enforceSchema: Boolean = false): String {
         return when (format) {
-            Broker.BrokerFormat.STRING, null -> StringSerializer::class.java.name
-            Broker.BrokerFormat.JSON -> {
+            Broker.ProducerFormat.STRING, null -> StringSerializer::class.java.name
+            Broker.ProducerFormat.JSON -> {
                 if (enforceSchema) {
                     KafkaJsonSchemaSerializer::class.java.name
                 } else {
                     KafkaJsonSerializer::class.java.name
                 }
-
             }
 
-            Broker.BrokerFormat.AVRO -> KafkaAvroSerializer::class.java.name
+            Broker.ProducerFormat.AVRO -> {
+                if (!enforceSchema) {
+                    throw IllegalArgumentException("AVRO serialization requires a schema registry")
+                }
+                KafkaAvroSerializer::class.java.name
+            }
         }
     }
+
 }

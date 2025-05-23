@@ -1,51 +1,57 @@
 package paladin.router.util.factory
 
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
-import paladin.router.models.configuration.brokers.MessageBroker
-import paladin.router.models.configuration.brokers.auth.EncryptedBrokerConfig
-import paladin.router.models.configuration.brokers.auth.KafkaEncryptedConfig
-import paladin.router.models.configuration.brokers.auth.RabbitEncryptedConfig
-import paladin.router.models.configuration.brokers.auth.SQSEncryptedConfig
-import paladin.router.models.configuration.brokers.core.KafkaBrokerConfig
-import paladin.router.models.configuration.brokers.core.RabbitBrokerConfig
-import paladin.router.models.configuration.brokers.core.SQSBrokerConfig
-import paladin.router.models.dispatch.*
-import paladin.router.models.configuration.brokers.core.BrokerConfig
+import paladin.router.models.configuration.producers.MessageProducer
+import paladin.router.models.configuration.producers.auth.EncryptedProducerConfig
+import paladin.router.models.configuration.producers.auth.KafkaEncryptedConfig
+import paladin.router.models.configuration.producers.auth.RabbitEncryptedConfig
+import paladin.router.models.configuration.producers.auth.SQSEncryptedConfig
+import paladin.router.models.configuration.producers.core.KafkaProducerConfig
+import paladin.router.models.configuration.producers.core.ProducerConfig
+import paladin.router.models.configuration.producers.core.RabbitProducerConfig
+import paladin.router.models.configuration.producers.core.SQSProducerConfig
+import paladin.router.models.dispatch.KafkaDispatcher
 import paladin.router.models.dispatch.MessageDispatcher
+import paladin.router.models.dispatch.RabbitDispatcher
+import paladin.router.models.dispatch.SqsDispatcher
 import paladin.router.services.schema.SchemaService
 
 @Component
-class MessageDispatcherFactory(private val schemaService: SchemaService) {
-    fun fromBrokerConfig(
-        broker: MessageBroker,
-        config: BrokerConfig,
-        authConfig: EncryptedBrokerConfig
+class MessageDispatcherFactory(private val schemaService: SchemaService, private val meterRegistry: MeterRegistry) {
+    fun fromProducerProperties(
+        producer: MessageProducer,
+        config: ProducerConfig,
+        connectionConfig: EncryptedProducerConfig
     ): MessageDispatcher {
         return when {
-            config is KafkaBrokerConfig && authConfig is KafkaEncryptedConfig -> {
+            config is KafkaProducerConfig && connectionConfig is KafkaEncryptedConfig -> {
                 KafkaDispatcher(
-                    broker = broker,
-                    config = config,
-                    authConfig = authConfig,
-                    schemaService = schemaService
+                    producer = producer,
+                    producerConfig = config,
+                    connectionConfig = connectionConfig,
+                    schemaService = schemaService,
+                    meterRegistry = meterRegistry
                 )
             }
 
-            config is RabbitBrokerConfig && authConfig is RabbitEncryptedConfig -> {
+            config is RabbitProducerConfig && connectionConfig is RabbitEncryptedConfig -> {
                 RabbitDispatcher(
-                    broker = broker,
-                    config = config,
-                    authConfig = authConfig,
-                    schemaService = schemaService
+                    producer = producer,
+                    producerConfig = config,
+                    connectionConfig = connectionConfig,
+                    schemaService = schemaService,
+                    meterRegistry = meterRegistry
                 )
             }
 
-            config is SQSBrokerConfig && authConfig is SQSEncryptedConfig -> {
-                SQSDispatcher(
-                    broker = broker,
-                    config = config,
-                    authConfig = authConfig,
-                    schemaService = schemaService
+            config is SQSProducerConfig && connectionConfig is SQSEncryptedConfig -> {
+                SqsDispatcher(
+                    producer = producer,
+                    producerConfig = config,
+                    connectionConfig = connectionConfig,
+                    schemaService = schemaService,
+                    meterRegistry = meterRegistry
                 )
             }
 
