@@ -2,9 +2,14 @@ package paladin.router.services.dispatch
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.apache.avro.generic.GenericRecord
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +22,7 @@ import paladin.avro.ChangeEventData
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.services.producers.ProducerService
+import paladin.router.services.schema.SchemaService
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import util.TestLogAppender
 import util.brokers.ProducerCreationFactory
@@ -30,6 +36,7 @@ import util.sqs.SqsClusterManager
 import java.time.Duration
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -49,6 +56,9 @@ class DispatchIntegrationTest {
     @Autowired
     private lateinit var producerService: ProducerService
 
+    @Autowired
+    private lateinit var schemaService: SchemaService
+
     @BeforeEach
     fun setup() {
         logbackLogger = LoggerFactory.getLogger(logger.name) as Logger
@@ -59,6 +69,7 @@ class DispatchIntegrationTest {
     fun tearDown() {
         logbackLogger.detachAppender(testAppender)
         testAppender.stop()
+
     }
 
     companion object {
@@ -137,7 +148,7 @@ class DispatchIntegrationTest {
 
         // Set up Dispatchers
         ProducerCreationFactory.fromKafka(
-            name = "kafka-producer-1",
+            name = "kafka-producer-${UUID.randomUUID()}",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
             keySerializationFormat = Broker.ProducerFormat.STRING,
             valueSerializationFormat = Broker.ProducerFormat.STRING,
@@ -161,7 +172,7 @@ class DispatchIntegrationTest {
         }
 
         ProducerCreationFactory.fromKafka(
-            name = "kafka-producer-2",
+            name = "kafka-producer-${UUID.randomUUID()}",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_2),
             keySerializationFormat = Broker.ProducerFormat.STRING,
             valueSerializationFormat = Broker.ProducerFormat.STRING,
@@ -175,7 +186,7 @@ class DispatchIntegrationTest {
         }
 
         ProducerCreationFactory.fromSqs(
-            name = "sqs-producer-1",
+            name = "sqs-producer-${UUID.randomUUID()}",
             cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.STRING,
             requireKey = false
@@ -198,7 +209,7 @@ class DispatchIntegrationTest {
         }
 
         ProducerCreationFactory.fromRabbit(
-            name = "rabbit-producer-1",
+            name = "rabbit-producer-${UUID.randomUUID()}",
             cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.STRING,
             queue = rabbitQueue,
@@ -252,21 +263,20 @@ class DispatchIntegrationTest {
         // Receive messages from Kafka
         val consumerProps1 = mapOf(
             "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
-
             "group.id" to "test-group-1",
-            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "key.deserializer" to StringDeserializer::class.java,
+            "value.deserializer" to StringDeserializer::class.java,
             "auto.offset.reset" to "earliest"
         )
         val consumerProps2 = mapOf(
             "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_2).container.bootstrapServers,
             "group.id" to "test-group-2",
-            "key.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
-            "value.deserializer" to "org.apache.kafka.common.serialization.StringDeserializer",
+            "key.deserializer" to StringDeserializer::class.java,
+            "value.deserializer" to StringDeserializer::class.java,
             "auto.offset.reset" to "earliest"
         )
-        val consumer1 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps1)
-        val consumer2 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps2)
+        val consumer1 = KafkaConsumer<String, String>(consumerProps1)
+        val consumer2 = KafkaConsumer<String, String>(consumerProps2)
 
         consumer1.subscribe(listOf(kafkaTopic1))
         consumer2.subscribe(listOf(kafkaTopic2))
@@ -336,13 +346,15 @@ class DispatchIntegrationTest {
 
 
         // Set Up Mock Avro Payloads + Schemas
+        val key = "test-key"
         val mockAvroValue: ChangeEventData = mockAvroPayload()
         // Subset of original schema. Testing custom schema matching
         val modifiedAvroSchema = mockModifiedAvroSchema()
 
+
         // Set up Dispatchers
         ProducerCreationFactory.fromKafka(
-            name = "kafka-producer-1",
+            name = "kafka-producer-${UUID.randomUUID()}",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
             keySerializationFormat = Broker.ProducerFormat.STRING,
             valueSerializationFormat = Broker.ProducerFormat.AVRO,
@@ -367,7 +379,7 @@ class DispatchIntegrationTest {
         }
 
         ProducerCreationFactory.fromSqs(
-            name = "sqs-producer-1",
+            name = "sqs-producer-${UUID.randomUUID()}",
             cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.AVRO,
             requireKey = false
@@ -391,7 +403,7 @@ class DispatchIntegrationTest {
         }
 
         ProducerCreationFactory.fromRabbit(
-            name = "rabbit-producer-1",
+            name = "rabbit-producer-${UUID.randomUUID()}",
             cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.AVRO,
             queue = rabbitQueue,
@@ -416,6 +428,91 @@ class DispatchIntegrationTest {
             }
         }
 
+        // Mock an Event Listener dispatching an event
+        dispatchService.dispatchEvents(
+            key = key,
+            value = mockAvroValue,
+            topic = sourceTopic,
+        )
+
+        val sqsCluster = sqsClusterManager.getCluster(SQS_CLUSTER_1)
+        val rabbitCluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1)
+
+        val sqsMessages = sqsCluster.client.receiveMessage(
+            ReceiveMessageRequest.builder()
+                .queueUrl(sqsQueue)
+                .maxNumberOfMessages(1)
+                .waitTimeSeconds(10)
+                .build()
+        ).messages()
+
+        // Receive messages from RabbitMQ
+        val rabbitMessages = rabbitCluster.channel.basicGet(
+            rabbitQueue,
+            true
+        )
+
+        // Receive messages from Kafka
+        val consumerProps1 = mapOf(
+            "bootstrap.servers" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).container.bootstrapServers,
+            "schema.registry.url" to kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).schemaRegistryContainer?.schemaRegistryUrl,
+            "group.id" to "test-group-1",
+            "key.deserializer" to StringDeserializer::class.java,
+            "value.deserializer" to KafkaAvroDeserializer::class.java,
+            "auto.offset.reset" to "earliest"
+        )
+        val consumer1 = KafkaConsumer<String, GenericRecord>(consumerProps1)
+        consumer1.subscribe(listOf(kafkaTopic1))
+
+        val kafkaRecords1 = consumer1.poll(Duration.ofSeconds(10))
+
+        // Assert SQS messages
+        assert(sqsMessages.size == 1)
+        // Assert payload only contains the fields in the modified schema
+        sqsMessages.first().let {
+            // Read as JSON map to assert the payload
+            val payload = ObjectMapper().readTree(it.body())
+            assertEquals(payload.get("operation").asText(), mockAvroValue.getOperation().toString())
+            assertTrue { payload.get("before").isNull }
+            assertTrue { !payload.get("after").isNull }
+            assertFalse { payload.has("source") }
+            assertFalse { payload.has("table") }
+            assertFalse { payload.has("timestamp") }
+
+        }
+
+
+        // Assert RabbitMQ messages
+        rabbitMessages.let {
+            assertNotNull(it)
+            val avroRecord: GenericRecord = schemaService.byteArrayToAvro(
+                ChangeEventData.`SCHEMA$`,
+                it.body
+            )
+
+            // Assert payload matches what was sent
+            assertEquals(avroRecord.get("operation"), mockAvroValue.getOperation())
+            assertEquals(avroRecord.get("before"), mockAvroValue.getBefore())
+            assertEquals(avroRecord.get("after"), mockAvroValue.getAfter())
+            assertEquals(avroRecord.get("source"), mockAvroValue.getSource())
+            assertEquals(avroRecord.get("table"), mockAvroValue.getTable())
+            assertEquals(avroRecord.get("timestamp"), mockAvroValue.getTimestamp())
+        }
+
+        kafkaRecords1.let {
+            assert(it.count() == 1)
+            val avroRecord: GenericRecord = it.first().value()
+            // Assert payload matches what was sent
+            assertEquals(avroRecord.get("operation"), mockAvroValue.getOperation())
+            assertEquals(avroRecord.get("before"), mockAvroValue.getBefore())
+            assertEquals(avroRecord.get("after"), mockAvroValue.getAfter())
+            assertEquals(avroRecord.get("source"), mockAvroValue.getSource())
+            assertEquals(avroRecord.get("table"), mockAvroValue.getTable())
+            assertEquals(avroRecord.get("timestamp"), mockAvroValue.getTimestamp())
+        }
+
+        // Clean up Kafka consumers
+        consumer1.close()
     }
 
     @Test

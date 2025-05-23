@@ -1,7 +1,6 @@
 package util.kafka
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -73,11 +72,11 @@ class KafkaClusterManager {
         val config = clusters[id] ?: throw IllegalStateException("Kafka Cluster $id not initialized")
         registry.add("$propertyPrefix.bootstrap-servers") { config.container.bootstrapServers }
         config.schemaRegistryContainer?.let {
-            registry.add("$propertyPrefix.schema-registry-url") {
+            registry.add("$propertyPrefix.schema.registry.url") {
                 it.schemaRegistryUrl
             }
         } ?: run {
-            registry.add("$propertyPrefix.schema-registry-url") { null }
+            registry.add("$propertyPrefix.schema.registry.url") { null }
         }
     }
 
