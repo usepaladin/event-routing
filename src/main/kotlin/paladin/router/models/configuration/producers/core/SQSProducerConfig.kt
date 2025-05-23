@@ -12,6 +12,7 @@ data class SQSProducerConfig(
     override var connectionTimeout: Int = 10000,
     override var errorHandlerStrategy: ProducerConfig.ErrorStrategy = ProducerConfig.ErrorStrategy.DLQ,
     var queueUrl: String,
+    var fifoQueue: Boolean = false,
     var defaultGroupId: String? = null,
     var messageRetentionPeriod: Int = 345600,
     var visibilityTimeout: Int = 30,

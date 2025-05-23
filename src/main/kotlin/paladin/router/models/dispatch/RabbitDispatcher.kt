@@ -49,7 +49,42 @@ data class RabbitDispatcher(
      * @param topic The destination exchange/queue and serialization details.
      */
     override fun <V> dispatch(payload: V, topic: DispatchTopic) {
-        dispatch(producerConfig.defaultRoutingKey ?: "", payload, topic)
+        synchronized(lock) {
+            messageProducer.let {
+                if (it == null) {
+                    // Producer has not been instantiated
+                    errorCounter?.increment()
+                    throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
+                }
+
+                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+                try {
+                    val runnable = Runnable {
+                        if (!producerConfig.allowAsync) {
+                            val correlationData = CorrelationData(UUID.randomUUID().toString())
+                            it.convertSendAndReceive(
+                                topic.destinationTopic,
+                                producerConfig.defaultRoutingKey ?: "",
+                                dispatchValue,
+                                correlationData
+                            )
+                            logger.info { "${identifier()} => Message sent synchronously to topic: $topic" }
+                        } else {
+                            messageProducer?.convertAndSend(
+                                topic.destinationTopic,
+                                producerConfig.defaultRoutingKey ?: "",
+                                dispatchValue
+                            )
+                        }
+                    }
+                    sendTimer?.record(runnable) ?: runnable.run()
+                } catch (ex: Exception) {
+                    errorCounter?.increment()
+                    throw ex
+                }
+
+            }
+        }
     }
 
     /**
@@ -151,7 +186,10 @@ data class RabbitDispatcher(
     override fun testConnection(): Boolean {
         synchronized(lock) {
             try {
-                messageProducer?.connectionFactory?.createConnection()?.createChannel(true)?.use { channel ->
+                messageProducer?.connectionFactory?.createConnection()?.createChannel(
+                    // Transactional/sync (true) v publish confirm/async (false)
+                    !producerConfig.allowAsync
+                )?.use { channel ->
                     // Test by declaring a temporary queue
                     channel.queueDeclarePassive(producerConfig.queueName) // Assumes brokerName is a valid queue for testing
                 }

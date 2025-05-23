@@ -147,15 +147,25 @@ class SchemaService(
         }
     }
 
+    /**
+     * Converts the payload to a string without JSON serialization for simple types.
+     * For complex types or Avro records, serializes to a string representation of the data.
+     */
     fun <T> parseToString(payload: T): String {
-        // When handling Avro messages, we would need to ensure we only convert the payload to a string, not any associated metadata included in the object (ie. Schema)
-        if (payload is SpecificRecord) {
-            val avroPayload = destructureAvro(payload as GenericRecord)
-            return objectMapper.writeValueAsString(avroPayload)
-        }
+        return when (payload) {
+            is String -> payload // Return raw string without JSON serialization
+            is SpecificRecord -> {
+                val avroPayload = destructureAvro(payload as GenericRecord)
+                objectMapper.writeValueAsString(avroPayload)
+            }
 
-        return objectMapper.writeValueAsString(payload)
+            else -> {
+                // For other types, convert to string representation without quotes if possible
+                payload?.toString() ?: ""
+            }
+        }
     }
+
 
     private fun <T> destructureClass(payload: T): Map<String, Any?> {
         if (payload is SpecificRecord) {

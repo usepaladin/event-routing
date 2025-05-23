@@ -58,14 +58,19 @@ data class SqsDispatcher(
                 val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
                 val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
 
-                val request = SendMessageRequest.builder()
+                val requestBuilder: SendMessageRequest.Builder = SendMessageRequest.builder()
                     .queueUrl(topic.destinationTopic)
                     .messageBody(dispatchValue.toString())
-                    .messageGroupId(dispatchKey.toString()) // For FIFO queues
-                    .messageDeduplicationId(dispatchKey.toString()) // For FIFO deduplication
-                    .build()
 
-                val runnable = sendMessage(request, it, topic.destinationTopic)
+                if (producerConfig.fifoQueue) {
+                    requestBuilder.apply {
+                        // For FIFO queues, set the message group ID and deduplication ID
+                        messageGroupId(dispatchKey.toString()) // For FIFO queues
+                        messageDeduplicationId(dispatchKey.toString()) // For FIFO deduplication
+                    }
+                }
+
+                val runnable = sendMessage(requestBuilder.build(), it, topic.destinationTopic)
                 sendTimer?.record(runnable) ?: runnable.run()
 
             }
@@ -88,14 +93,22 @@ data class SqsDispatcher(
                 }
 
                 val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
-
-                val request = SendMessageRequest.builder()
+                // Use the default group ID if provided, otherwise no group ID for standard queues
+                val requestBuilder: SendMessageRequest.Builder = SendMessageRequest.builder()
                     .queueUrl(topic.destinationTopic)
                     .messageBody(dispatchValue.toString())
-                    .apply { producerConfig.defaultGroupId?.let { id -> messageGroupId(id).messageDeduplicationId(id) } }
-                    .build()
 
-                val runnable = sendMessage(request, it, topic.destinationTopic)
+                if (producerConfig.fifoQueue) {
+                    requestBuilder.apply {
+                        producerConfig.defaultGroupId?.let { id ->
+                            messageGroupId(id).messageDeduplicationId(
+                                id
+                            )
+                        }
+                    }
+                }
+
+                val runnable = sendMessage(requestBuilder.build(), it, topic.destinationTopic)
                 sendTimer?.record(runnable) ?: runnable.run()
             }
         }
@@ -129,10 +142,22 @@ data class SqsDispatcher(
                 val credentials =
                     AwsBasicCredentials.create(connectionConfig.accessKey, connectionConfig.secretKey)
                 client = SqsClient.builder()
-                    .apply { connectionConfig.endpointURL?.let { endpointOverride(URI.create(it)) } }
+                    .apply {
+                        connectionConfig.endpointURL?.let { endpointOverride(URI.create(it)) }
+                    }
                     .region(connectionConfig.region)
                     .credentialsProvider(StaticCredentialsProvider.create(credentials))
                     .build()
+
+                this.producerConfig.fifoQueue.let {
+                    if (it) {
+                        client?.setQueueAttributes { client ->
+                            client.queueUrl(this.producerConfig.queueUrl)
+                                .attributesWithStrings(mapOf("FifoQueue" to "true"))
+                        }
+
+                    }
+                }
 
                 testConnection()
             } catch (e: Exception) {
