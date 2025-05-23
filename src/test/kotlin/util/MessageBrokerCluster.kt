@@ -1,9 +1,12 @@
 package util
 
+import com.rabbitmq.client.Channel
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.testcontainers.containers.Network
+import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import util.kafka.SchemaRegistryContainer
 
@@ -21,3 +24,12 @@ data class KafkaCluster(
     override val container: ConfluentKafkaContainer,
     override val client: AdminClient,
 ) : MessageBrokerCluster<ConfluentKafkaContainer, AdminClient>(container, client)
+
+data class RabbitMqCluster(
+    val channel: Channel,
+    override val container: RabbitMQContainer,
+    override val client: CachingConnectionFactory
+
+) : MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory>(
+    container, client
+)

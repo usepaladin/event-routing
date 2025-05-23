@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.mockk.verify
 import org.junit.jupiter.api.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +13,6 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 import paladin.router.enums.configuration.Broker
-import paladin.router.models.dispatch.DispatchTopic
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.services.producers.ProducerService
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
@@ -23,7 +21,10 @@ import util.brokers.ProducerCreationFactory
 import util.kafka.KafkaClusterManager
 import util.rabbit.RabbitClusterManager
 import util.sqs.SqsClusterManager
+import java.time.Duration
 import java.util.*
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -103,11 +104,22 @@ class DispatchIntegrationTest {
     ) {
         val sourceTopic: String = "test-topic-${UUID.randomUUID()}"
 
-        val (sqsTopic1, sqsQueue1) = "sqs-test-topic-${UUID.randomUUID()}".let {
+        val (sqsTopic, sqsQueue) = "sqs-test-topic-${UUID.randomUUID()}".let {
             Pair(it, sqsClusterManager.createQueue(SQS_CLUSTER_1, it))
         }
-        val (rabbitTopic1, rabbitQueue1) = "rabbit-test-topic-${UUID.randomUUID()}".let {
-            Pair(it, rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, it))
+        val (rabbitTopic, rabbitQueue, rabbitExchange) = "rabbit-test-topic-${UUID.randomUUID()}".let {
+            val queue = rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, it)
+            val exchange =
+                rabbitMqClusterManager.createExchange(RABBIT_MQ_CLUSTER_1, it)
+
+            rabbitMqClusterManager.bindQueueToExchange(
+                RABBIT_MQ_CLUSTER_1,
+                queue,
+                exchange,
+                "#"
+            )
+
+            Triple(it, queue, exchange)
         }
         val kafkaTopic1 = "kafka-test-topic-${UUID.randomUUID()}".also {
             kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, it)
@@ -118,110 +130,118 @@ class DispatchIntegrationTest {
         }
 
         // Set up Dispatchers
-        val kafkaProducer1 = ProducerCreationFactory.fromKafka(
+        ProducerCreationFactory.fromKafka(
             name = "kafka-producer-1",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
             keySerializationFormat = Broker.ProducerFormat.STRING,
             valueSerializationFormat = Broker.ProducerFormat.STRING,
             requireKey = true
-        )
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
 
-        val kafkaProducer2 = ProducerCreationFactory.fromKafka(
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = kafkaTopic1,
+                key = Broker.ProducerFormat.STRING,
+                value = Broker.ProducerFormat.STRING
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
+        }
+
+        ProducerCreationFactory.fromKafka(
             name = "kafka-producer-2",
             cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_2),
             keySerializationFormat = Broker.ProducerFormat.STRING,
             valueSerializationFormat = Broker.ProducerFormat.STRING,
             requireKey = true
-        )
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
+            // Do not add Dispatch topic to producer to test logical filtering and dispatcher retrieval
+        }
 
-        val sqsProducer = ProducerCreationFactory.fromSqs(
+        ProducerCreationFactory.fromSqs(
             name = "sqs-producer-1",
             cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.STRING,
             requireKey = false
-        )
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
 
-        val rabbitProducer = ProducerCreationFactory.fromRabbit(
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = sqsTopic,
+                key = Broker.ProducerFormat.STRING,
+                value = Broker.ProducerFormat.STRING
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
+        }
+
+        ProducerCreationFactory.fromRabbit(
             name = "rabbit-producer-1",
             cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
             valueSerializationFormat = Broker.ProducerFormat.STRING,
-            queue = rabbitQueue1,
-            requireKey = false
-        )
+            queue = rabbitQueue,
+            requireKey = false,
+            exchange = rabbitExchange
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
 
-        // Set up Dispatchers and assert successful connection with given configuration properties
-        val kafka1Dispatcher = producerService.registerProducer(kafkaProducer1).also {
-            assertTrue { it.testConnection() }
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = rabbitTopic,
+                key = Broker.ProducerFormat.STRING,
+                value = Broker.ProducerFormat.STRING
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
         }
-        val kafka2Dispatcher = producerService.registerProducer(kafkaProducer2).also {
-            assertTrue { it.testConnection() }
-        }
-        val sqsDispatcher = producerService.registerProducer(sqsProducer).also {
-            assertTrue { it.testConnection() }
-        }
-        val rabbitDispatcher = producerService.registerProducer(rabbitProducer).also {
-            assertTrue { it.testConnection() }
-        }
-
-
-        val kafkaBroker1DispatchTopicRequest = DispatchTopicRequest(
-            dispatcher = kafkaProducer1.producerName,
-            sourceTopic = sourceTopic,
-            destinationTopic = kafkaTopic1,
-            key = Broker.ProducerFormat.STRING,
-            value = Broker.ProducerFormat.STRING
-        )
-
-        val sqsProducerDispatchTopicRequest = DispatchTopicRequest(
-            dispatcher = sqsProducer.producerName,
-            sourceTopic = sourceTopic,
-            destinationTopic = sqsTopic1,
-            key = Broker.ProducerFormat.STRING,
-            value = Broker.ProducerFormat.STRING
-        )
-
-        val rabbitProducerDispatchTopicRequest = DispatchTopicRequest(
-            dispatcher = rabbitProducer.producerName,
-            sourceTopic = sourceTopic,
-            destinationTopic = rabbitTopic1,
-            key = Broker.ProducerFormat.STRING,
-            value = Broker.ProducerFormat.STRING
-        )
-
-        // Allocate topics to dispatchers
-        dispatchService.addDispatcherTopic(kafkaBroker1DispatchTopicRequest)
-        dispatchService.addDispatcherTopic(sqsProducerDispatchTopicRequest)
-        dispatchService.addDispatcherTopic(rabbitProducerDispatchTopicRequest)
 
         // Mock an Event Listener dispatching an event
+        val key = "test-key"
+        val payload = "test-value"
+
         dispatchService.dispatchEvents(
-            key = "test-key",
-            value = "test-value",
+            key = key,
+            value = payload,
             topic = sourceTopic,
         )
 
-        // Assert message has been dispatched
-        verify(exactly = 1) { kafka1Dispatcher.dispatch("test-key", "test-value", any<DispatchTopic>()) }
-        verify(exactly = 0) { kafka2Dispatcher.dispatch(any<String>(), any<String>(), any<DispatchTopic>()) }
-        verify(exactly = 1) { sqsDispatcher.dispatch("test-value", any<DispatchTopic>()) }
-        verify(exactly = 1) { rabbitDispatcher.dispatch("test-value", any<DispatchTopic>()) }
+        val sqsCluster = sqsClusterManager.getCluster(SQS_CLUSTER_1)
+        val rabbitCluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1)
 
-        // Assert message was received by testContainer broker
-        val sqsClient = sqsClusterManager.getCluster(SQS_CLUSTER_1).client
-        val rabbitClient = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1).client
-        val kafka1Client = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).client
-
-
-        val sqsMessages1 = sqsClient.receiveMessage(
+        val sqsMessages = sqsCluster.client.receiveMessage(
             ReceiveMessageRequest.builder()
-                .queueUrl(sqsQueue1)
+                .queueUrl(sqsQueue)
                 .maxNumberOfMessages(1)
                 .waitTimeSeconds(10)
                 .build()
         ).messages()
 
         // Receive messages from RabbitMQ
-        val receivedRabbitMessage1 = rabbitmqCluster1Template.receiveAndConvert(rabbitQueue1, 10000) as String?
+        val rabbitMessages = rabbitCluster.channel.basicGet(
+            rabbitQueue,
+            true
+        )
 
         // Receive messages from Kafka
         val consumerProps1 = mapOf(
@@ -241,6 +261,7 @@ class DispatchIntegrationTest {
         )
         val consumer1 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps1)
         val consumer2 = org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps2)
+
         consumer1.subscribe(listOf(kafkaTopic1))
         consumer2.subscribe(listOf(kafkaTopic2))
 
@@ -248,26 +269,22 @@ class DispatchIntegrationTest {
         val kafkaRecords2 = consumer2.poll(Duration.ofSeconds(10))
 
         // Assert SQS messages
-        assert(sqsMessages1.size == 1)
-        assertEquals(sqsMessages1.first().body(), sqsMessage1)
+        assert(sqsMessages.size == 1)
+        assertEquals(sqsMessages.first().body(), payload)
 
         // Assert RabbitMQ messages
-        receivedRabbitMessage1.let {
+        rabbitMessages.let {
             assertNotNull(it)
-            assertEquals(it, rabbitMessage1)
+            assertEquals(it.body.toString(Charsets.UTF_8), payload)
         }
-        assert(receivedRabbitMessage1 != null)
-        assertEquals(receivedRabbitMessage1, rabbitMessage1)
 
         kafkaRecords1.let {
             assert(it.count() == 1)
-            assertEquals(it.first().value(), kafkaMessage1)
+            assertEquals(it.first().key(), key)
+            assertEquals(it.first().value(), payload)
         }
 
-        kafkaRecords2.let {
-            assert(it.count() == 1)
-            assertEquals(it.first().value(), kafkaMessage2)
-        }
+        assert(kafkaRecords2.count() == 0)
 
         // Clean up Kafka consumers
         consumer1.close()

@@ -5,14 +5,14 @@ import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.utility.DockerImageName
-import util.MessageBrokerCluster
+import util.RabbitMqCluster
 
 class RabbitClusterManager {
     // Store cluster configurations
-    private val clusters = mutableMapOf<String, MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory>>()
+    private val clusters = mutableMapOf<String, RabbitMqCluster>()
 
     // Initialize a new RabbitMQ cluster
-    fun init(clusterId: String): MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory> {
+    fun init(clusterId: String): RabbitMqCluster {
         if (clusters.containsKey(clusterId)) {
             throw IllegalStateException("RabbitMQ Cluster $clusterId already initialized")
         }
@@ -28,8 +28,9 @@ class RabbitClusterManager {
             password = container.adminPassword
         }
         val connectionFactory = CachingConnectionFactory(factory)
+        val channel = connectionFactory.createConnection().createChannel(false)
 
-        val config = MessageBrokerCluster(container, connectionFactory)
+        val config = RabbitMqCluster(channel, container, connectionFactory)
         clusters[clusterId] = config
         return config
     }
@@ -47,17 +48,39 @@ class RabbitClusterManager {
         registry.add("$propertyPrefix.password") { config.container.adminPassword }
     }
 
+    fun bindQueueToExchange(
+        clusterId: String,
+        queueName: String,
+        exchangeName: String,
+        routingKey: String
+    ) {
+        val config = clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
+        config.channel.use {
+            it.queueBind(queueName, exchangeName, routingKey)
+            config.boostrapUrls.add(queueName)
+        }
+    }
+
+    fun createExchange(clusterId: String, exchangeName: String): String {
+        val config = clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
+        config.channel.use {
+            it.exchangeDeclare(exchangeName, "direct", true)
+            config.boostrapUrls.add(exchangeName)
+            return exchangeName
+        }
+    }
+
     // Create a queue in the specified cluster
     fun createQueue(clusterId: String, queueName: String): String {
         val config = clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
-        config.client.createConnection().createChannel(true).use { channel ->
-            channel.queueDeclare(queueName, true, false, false, null)
+        config.channel.use {
+            it.queueDeclare(queueName, true, false, false, null)
             config.boostrapUrls.add(queueName)
             return queueName
         }
     }
 
-    fun getCluster(clusterId: String): MessageBrokerCluster<RabbitMQContainer, CachingConnectionFactory> {
+    fun getCluster(clusterId: String): RabbitMqCluster {
         return clusters[clusterId] ?: throw IllegalStateException("RabbitMQ Cluster $clusterId not initialized")
     }
 

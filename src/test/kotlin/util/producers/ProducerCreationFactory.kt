@@ -71,6 +71,7 @@ object ProducerCreationFactory {
         val defaultSqsProducerConfig = config ?: SQSProducerConfig(
             queueUrl = cluster.boostrapUrls.first(),
             defaultGroupId = "test_group_1",
+            requireKey = requireKey,
         )
 
         val encryptedConfig = SQSEncryptedConfig(
@@ -100,13 +101,17 @@ object ProducerCreationFactory {
         valueSerializationFormat: Broker.ProducerFormat,
         requireKey: Boolean = false,
         queue: String,
+        exchange: String = "paladin",
         config: RabbitProducerConfig? = null,
+        routingKey: String = "#"
     ): ProducerCreationRequest {
 
         val defaultRabbitProducerConfig = config ?: RabbitProducerConfig(
             brokerType = Broker.BrokerType.RABBIT,
-            exchangeName = "paladin",
-            queueName = queue
+            exchangeName = exchange,
+            queueName = queue,
+            requireKey = requireKey,
+            defaultRoutingKey = routingKey,
         )
 
         val encryptedConfig = RabbitEncryptedConfig(
