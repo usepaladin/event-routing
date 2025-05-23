@@ -14,7 +14,7 @@ import java.util.*
 class KafkaClusterManager {
     // Store cluster configurations
     private val clusters = mutableMapOf<String, KafkaCluster>()
-    
+
     // Initialize a new Kafka cluster with Schema Registry
     fun init(id: String, includeSchemaRegistry: Boolean = true): KafkaCluster {
         if (clusters.containsKey(id)) {
@@ -31,7 +31,7 @@ class KafkaClusterManager {
             .withReuse(true)
             .apply { start() }
 
-        val schemaRegistry: Pair<SchemaRegistryContainer, SchemaRegistryClient?>? = includeSchemaRegistry.let {
+        val schemaRegistry: Pair<SchemaRegistryContainer, CachedSchemaRegistryClient?>? = includeSchemaRegistry.let {
             if (!it) return@let null
 
             val container = SchemaRegistryContainer(DockerImageName.parse("confluentinc/cp-schema-registry:7.4.0"))

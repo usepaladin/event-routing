@@ -81,3 +81,46 @@ fun mockAvroPayload() = ChangeEventData(
     Date().toInstant().epochSecond,
     "user"
 )
+
+/**
+ * Modified version of the ChangeEventData Avro schema to include a subset of the original fields
+ *
+ * Includes fields: operation, before, and after
+ * Negates fields: table, source, timestamp
+ */
+fun mockModifiedAvroSchema() = """{
+        "type": "record",
+        "name": "ChangeEventData",
+        "fields": [
+          {
+            "name": "operation",
+            "type": {
+              "type": "enum",
+              "name": "ChangeEventOperation",
+              "symbols": [
+                "CREATE",
+                "UPDATE",
+                "DELETE",
+                "SNAPSHOT",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "before",
+            "type": ["null",{
+              "type": "map",
+              "values": "string"
+            }],
+            "default": null
+          },
+          {
+            "name": "after",
+            "type": ["null",{
+              "type": "map",
+              "values": "string"
+            }],
+            "default": null
+          }
+        ]
+      }""".trimIndent()

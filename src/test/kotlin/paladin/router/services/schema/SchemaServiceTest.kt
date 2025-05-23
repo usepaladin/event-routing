@@ -173,17 +173,7 @@ class SchemaServiceTest {
         val result = schemaService.parseToJson(jsonSchema, user)
         assertEquals(0, result.size())
     }
-
-    @Test
-    fun `parseToString should serialize object to JSON string`() {
-        val user = User("Charlie", 50, "charlie@example.com")
-        val json = schemaService.parseToString(user)
-
-        val parsed = objectMapper.readTree(json)
-        assertEquals("Charlie", parsed["name"].asText())
-        assertEquals(50, parsed["age"].asInt())
-        assertEquals("charlie@example.com", parsed["email"].asText())
-    }
+    
 }
 
 

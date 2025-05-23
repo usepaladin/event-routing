@@ -1,7 +1,7 @@
 package util
 
 import com.rabbitmq.client.Channel
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
@@ -19,7 +19,7 @@ open class MessageBrokerCluster<T, Q>(
 data class KafkaCluster(
     val network: Network,
     val schemaRegistryContainer: SchemaRegistryContainer? = null,
-    val schemaRegistryClient: SchemaRegistryClient? = null,
+    val schemaRegistryClient: CachedSchemaRegistryClient? = null,
     val topics: MutableList<NewTopic> = mutableListOf(),
     override val container: ConfluentKafkaContainer,
     override val client: AdminClient,

@@ -35,6 +35,7 @@ object ProducerCreationFactory {
                 allowAsync = true,
                 enableAutoCommit = false,
                 autoCommitIntervalMs = 5000,
+                requireKey = requireKey,
                 acks = "all"
             )
         }

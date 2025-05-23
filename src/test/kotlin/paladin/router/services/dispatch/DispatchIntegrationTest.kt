@@ -2,6 +2,7 @@ package paladin.router.services.dispatch
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.*
@@ -12,6 +13,7 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
+import paladin.avro.ChangeEventData
 import paladin.router.enums.configuration.Broker
 import paladin.router.models.dispatch.DispatchTopicRequest
 import paladin.router.services.producers.ProducerService
@@ -19,6 +21,10 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
 import util.TestLogAppender
 import util.brokers.ProducerCreationFactory
 import util.kafka.KafkaClusterManager
+import util.kafka.SchemaRegistrationOperation
+import util.kafka.SchemaRegistryFactory
+import util.mock.mockAvroPayload
+import util.mock.mockModifiedAvroSchema
 import util.rabbit.RabbitClusterManager
 import util.sqs.SqsClusterManager
 import java.time.Duration
@@ -289,5 +295,134 @@ class DispatchIntegrationTest {
         // Clean up Kafka consumers
         consumer1.close()
         consumer2.close()
+    }
+
+    @Test
+    fun `handle dispatch with avro serialisation and custom schema matching`() {
+        val sourceTopic = "test-topic-${UUID.randomUUID()}"
+        val (sqsTopic, sqsQueue) = "sqs-test-topic-${UUID.randomUUID()}".let {
+            Pair(it, sqsClusterManager.createQueue(SQS_CLUSTER_1, it))
+        }
+        val (rabbitTopic, rabbitQueue, rabbitExchange) = "rabbit-test-topic-${UUID.randomUUID()}".let {
+            val queue = rabbitMqClusterManager.createQueue(RABBIT_MQ_CLUSTER_1, it)
+            val exchange =
+                rabbitMqClusterManager.createExchange(RABBIT_MQ_CLUSTER_1, it)
+
+            rabbitMqClusterManager.bindQueueToExchange(
+                RABBIT_MQ_CLUSTER_1,
+                queue,
+                exchange,
+                "#"
+            )
+
+            Triple(it, queue, exchange)
+        }
+        val kafkaTopic1 = "kafka-test-topic-${UUID.randomUUID()}".also {
+            kafkaClusterManager.createTopic(KAFKA_CLUSTER_1, it)
+        }
+
+        // Register Schema inside Kafka container
+        kafkaClusterManager.getCluster(KAFKA_CLUSTER_1).schemaRegistryClient?.let {
+            SchemaRegistryFactory.init(
+                it, listOf(
+                    SchemaRegistrationOperation(
+                        schema = AvroSchema(ChangeEventData.`SCHEMA$`),
+                        topic = kafkaTopic1,
+                        type = SchemaRegistrationOperation.SchemaType.VALUE
+                    )
+                )
+            )
+        }
+
+
+        // Set Up Mock Avro Payloads + Schemas
+        val mockAvroValue: ChangeEventData = mockAvroPayload()
+        // Subset of original schema. Testing custom schema matching
+        val modifiedAvroSchema = mockModifiedAvroSchema()
+
+        // Set up Dispatchers
+        ProducerCreationFactory.fromKafka(
+            name = "kafka-producer-1",
+            cluster = kafkaClusterManager.getCluster(KAFKA_CLUSTER_1),
+            keySerializationFormat = Broker.ProducerFormat.STRING,
+            valueSerializationFormat = Broker.ProducerFormat.AVRO,
+            requireKey = true
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
+
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = kafkaTopic1,
+                key = Broker.ProducerFormat.STRING,
+                valueSchema = ChangeEventData.`SCHEMA$`.toString(),
+                value = Broker.ProducerFormat.AVRO
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
+        }
+
+        ProducerCreationFactory.fromSqs(
+            name = "sqs-producer-1",
+            cluster = sqsClusterManager.getCluster(SQS_CLUSTER_1),
+            valueSerializationFormat = Broker.ProducerFormat.AVRO,
+            requireKey = false
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
+
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = sqsTopic,
+                key = Broker.ProducerFormat.STRING,
+                value = Broker.ProducerFormat.AVRO,
+                valueSchema = modifiedAvroSchema
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
+        }
+
+        ProducerCreationFactory.fromRabbit(
+            name = "rabbit-producer-1",
+            cluster = rabbitMqClusterManager.getCluster(RABBIT_MQ_CLUSTER_1),
+            valueSerializationFormat = Broker.ProducerFormat.AVRO,
+            queue = rabbitQueue,
+            requireKey = false,
+            exchange = rabbitExchange
+        ).run {
+            // Register Producer
+            producerService.registerProducer(this).also {
+                assertTrue { it.testConnection() }
+            }
+
+            // Add Dispatch topic to producer
+            DispatchTopicRequest(
+                dispatcher = this.producerName,
+                sourceTopic = sourceTopic,
+                destinationTopic = rabbitTopic,
+                key = Broker.ProducerFormat.STRING,
+                value = Broker.ProducerFormat.AVRO,
+                valueSchema = ChangeEventData.`SCHEMA$`.toString()
+            ).run {
+                dispatchService.addDispatcherTopic(this)
+            }
+        }
+
+    }
+
+    @Test
+    fun `handle dispatch to sqs FIFO queue and de-duplication`() {
+    }
+
+    @Test
+    fun `handle rabbit sync vs async queues`() {
     }
 }
