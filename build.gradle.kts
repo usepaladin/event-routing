@@ -68,7 +68,6 @@ dependencies {
 
 
     // Message Broker Implementations
-    implementation("org.springframework.cloud:spring-cloud-aws-messaging:2.2.6.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit:4.2.1")

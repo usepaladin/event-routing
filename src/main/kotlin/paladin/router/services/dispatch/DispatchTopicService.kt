@@ -14,13 +14,14 @@ class DispatchTopicService(
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
     fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
-        repository.save(topic.toEntity()).let {
-            topic.apply {
-                id = it.id
-            }
-
+        return try {
+            val savedEntity = repository.save(topic.toEntity())
+            topic.apply { id = savedEntity.id }
             dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
-            return topic
+            topic
+        } catch (e: Exception) {
+            // Log error and rethrow
+            throw RuntimeException("Failed to add dispatcher topic", e)
         }
     }
 
@@ -35,11 +36,16 @@ class DispatchTopicService(
     }
 
     fun init(dispatcher: MessageDispatcher) {
-        repository.findByProducerId(dispatcher.producer.id).map {
-            DispatchTopic.fromEntity(it).run {
-                dispatcherTopics.computeIfAbsent(this.sourceTopic) { ConcurrentHashMap() }[dispatcher] = this
+        try {
+            repository.findByProducerId(dispatcher.producer.id).map {
+                DispatchTopic.fromEntity(it).run {
+                    dispatcherTopics.computeIfAbsent(this.sourceTopic) { ConcurrentHashMap() }[dispatcher] = this
+                }
             }
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to initialize dispatcher topics for producer ${dispatcher.producer.id}", e)
         }
+
     }
 
     fun getDispatchersForTopic(topic: String): ConcurrentHashMap<MessageDispatcher, DispatchTopic>? {

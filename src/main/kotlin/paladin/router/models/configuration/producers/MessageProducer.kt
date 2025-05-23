@@ -1,6 +1,6 @@
 package paladin.router.models.configuration.producers
 
-import paladin.router.entities.brokers.configuration.MessageProducerConfigurationEntity
+import paladin.router.entities.producers.configuration.MessageProducerConfigurationEntity
 
 import paladin.router.enums.configuration.Broker
 import paladin.router.util.Configurable

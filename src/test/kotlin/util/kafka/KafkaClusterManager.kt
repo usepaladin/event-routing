@@ -85,7 +85,7 @@ class KafkaClusterManager {
         val config = clusters[id] ?: throw IllegalStateException("Kafka Cluster $id not initialized")
         val newTopic = NewTopic(topicName, partitions, replicationFactor)
         config.run {
-            client.createTopics(listOf(newTopic)).all().get()
+            client.createTopics(listOf(newTopic)).all().get(30, java.util.concurrent.TimeUnit.SECONDS)
             topics.add(newTopic)
         }
     }

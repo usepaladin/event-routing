@@ -1,4 +1,4 @@
-package paladin.router.entities.brokers.configuration
+package paladin.router.entities.producers.configuration
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -78,12 +78,13 @@ data class MessageProducerConfigurationEntity(
     var updatedAt: ZonedDateTime = ZonedDateTime.now()
 ) {
     companion object Factory {
+        private val objectMapper = ObjectMapper()
+
         fun fromConfiguration(
             messageProducer: MessageProducer,
             encryptedConfig: String,
             producerConfig: ProducerConfig
         ): MessageProducerConfigurationEntity {
-            val objectMapper = ObjectMapper()
             messageProducer.let {
                 return MessageProducerConfigurationEntity(
                     id = it.id,

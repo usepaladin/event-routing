@@ -17,6 +17,7 @@ data class RabbitEncryptedConfig(
             this.host = config.host
             this.username = config.username
             this.password = config.password
+            this.sslEnabled = config.sslEnabled
         }
         return this
     }

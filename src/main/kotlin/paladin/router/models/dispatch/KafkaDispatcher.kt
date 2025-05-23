@@ -23,7 +23,7 @@ import java.util.*
  * Supports STRING, JSON, and AVRO serialization formats with optional schema registry integration.
  *
  * @param producer The Kafka producer instance used for setting up the message producer
- * @param producer The producer configuration (e.g., acks, retries).
+ * @param producerConfig The producer configuration (e.g., acks, retries).
  * @param connectionConfig Configuration properties for Broker connection/authentication (e.g., bootstrap servers, schema registry URL).
  * @param schemaService The service for serializing payloads.
  * @param meterRegistry Optional registry for metrics (e.g., Micrometer).
@@ -143,7 +143,8 @@ data class KafkaDispatcher(
                 )
                 put(ProducerConfig.ACKS_CONFIG, producerConfig.acks)
                 put(ProducerConfig.RETRIES_CONFIG, producerConfig.retryMaxAttempts)
-                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, producerConfig.retryBackoff)
+                put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, producerConfig.retryBackoff)
+                put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, producerConfig.connectionTimeout)
                 put(ProducerConfig.BATCH_SIZE_CONFIG, producerConfig.batchSize)
                 put(ProducerConfig.LINGER_MS_CONFIG, producerConfig.lingerMs)
                 put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerConfig.compressionType.type)

@@ -18,6 +18,13 @@ data class SQSProducerConfig(
     var visibilityTimeout: Int = 30,
     var maxNumberOfMessages: Int = 10
 ) : ProducerConfig {
+    init {
+        require(queueUrl.isNotBlank()) { "Queue URL cannot be blank" }
+        require(queueUrl.startsWith("https://sqs.") || queueUrl.startsWith("http://")) {
+            "Invalid SQS queue URL format"
+        }
+    }
+
     override fun updateConfiguration(config: Configurable): SQSProducerConfig {
         if (config is SQSProducerConfig) {
             super.updateConfiguration(config)
@@ -25,6 +32,8 @@ data class SQSProducerConfig(
             messageRetentionPeriod = config.messageRetentionPeriod
             visibilityTimeout = config.visibilityTimeout
             maxNumberOfMessages = config.maxNumberOfMessages
+            fifoQueue = config.fifoQueue
+            defaultGroupId = config.defaultGroupId
         }
         return this
     }

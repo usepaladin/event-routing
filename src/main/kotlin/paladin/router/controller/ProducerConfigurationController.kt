@@ -9,14 +9,14 @@ import paladin.router.models.dispatch.MessageDispatcher
 import paladin.router.services.producers.ProducerService
 
 @RestController
-@RequestMapping("/api/broker")
+@RequestMapping("/api/producer")
 class ProducerConfigurationController(
     private val producerService: ProducerService
 ) {
     @PostMapping("/")
     fun registerProducer(@RequestBody request: ProducerCreationRequest): ResponseEntity<MessageDispatchDTO> {
-        val createdBroker: MessageDispatcher = producerService.registerProducer(request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(MessageDispatchDTO.fromEntity(createdBroker))
+        val createdProducer: MessageDispatcher = producerService.registerProducer(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(MessageDispatchDTO.fromEntity(createdProducer))
     }
 
     @DeleteMapping("/{name}")

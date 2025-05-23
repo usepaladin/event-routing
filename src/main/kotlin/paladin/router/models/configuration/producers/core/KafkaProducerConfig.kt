@@ -25,6 +25,13 @@ data class KafkaProducerConfig(
     var lingerMs: Int = 1, // Time to buffer messages
     var compressionType: CompressionType = CompressionType.NONE, // none, gzip, snappy, lz4
 ) : ProducerConfig {
+    init {
+        require(clientId.isNotBlank()) { "Client ID cannot be blank" }
+        require(groupId != null || !enableAutoCommit) { "Group ID must be provided if auto commit is enabled" }
+        require(batchSize > 0) { "Batch size must be greater than 0" }
+        require(lingerMs >= 0) { "Linger time must be non-negative" }
+    }
+
     override fun updateConfiguration(config: Configurable): KafkaProducerConfig {
         if (config is KafkaProducerConfig) {
             super.updateConfiguration(config)

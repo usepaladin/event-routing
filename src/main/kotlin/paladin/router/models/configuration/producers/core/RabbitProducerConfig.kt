@@ -19,6 +19,12 @@ data class RabbitProducerConfig(
     var channelCacheSize: Int = 25,
     var defaultRoutingKey: String? = null,
 ) : ProducerConfig {
+    init {
+        require(exchangeName != null || queueName != null) {
+            "Either exchangeName or queueName must be provided"
+        }
+    }
+
     override fun updateConfiguration(config: Configurable): RabbitProducerConfig {
         if (config is RabbitProducerConfig) {
             super.updateConfiguration(config)

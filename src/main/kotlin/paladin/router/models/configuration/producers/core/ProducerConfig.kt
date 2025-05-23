@@ -19,6 +19,7 @@ sealed interface ProducerConfig : Serializable, Configurable {
             this.retryMaxAttempts = config.retryMaxAttempts
             this.retryBackoff = config.retryBackoff
             this.connectionTimeout = config.connectionTimeout
+            this.errorHandlerStrategy = config.errorHandlerStrategy
         }
         return this
     }

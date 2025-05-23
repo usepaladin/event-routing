@@ -18,7 +18,7 @@ import paladin.router.services.schema.SchemaService
 import java.util.*
 
 /**
- * A dispatcher for sending messages to a Kafka broker using a [RabbitTemplate].
+ * A dispatcher for sending messages to a RabbitMQ broker using a [RabbitTemplate].
  * Supports STRING, JSON, and AVRO serialization formats with optional schema registry integration.
  *
  * @param producer The Rabbit instance used for setting up the message producer
