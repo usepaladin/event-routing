@@ -64,7 +64,7 @@ data class MessageProducerConfigurationEntity(
     val valueFormat: ProducerFormat,
 
     @JsonIgnore
-    @Column(name = "enc_producer_config", nullable = false, length = 4096, columnDefinition = "TEXT")
+    @Column(name = "enc_producer_config", nullable = false, columnDefinition = "TEXT")
     var producerConfigEncrypted: String,
 
     @Type(JsonBinaryType::class)

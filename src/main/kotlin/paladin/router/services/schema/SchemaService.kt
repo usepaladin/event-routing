@@ -4,13 +4,22 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.github.oshai.kotlinlogging.KLogger
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.generic.GenericDatumWriter
 import org.apache.avro.generic.GenericRecord
+import org.apache.avro.io.DatumReader
+import org.apache.avro.io.DatumWriter
+import org.apache.avro.io.DecoderFactory
+import org.apache.avro.io.EncoderFactory
 import org.apache.avro.specific.SpecificRecord
 import org.springframework.stereotype.Service
 import paladin.router.enums.configuration.Broker
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 @Service
@@ -49,6 +58,35 @@ class SchemaService(
         }
     }
 
+    /**
+     * Serializes the payload to an Avro byte array using the provided Avro schema.
+     */
+    @Throws(IOException::class)
+    fun avroToByteArray(record: GenericRecord): ByteArray {
+        try {
+            val output = ByteArrayOutputStream()
+            val writer: DatumWriter<GenericRecord> = GenericDatumWriter(record.schema)
+            val encoder = EncoderFactory.get().binaryEncoder(output, null)
+            writer.write(record, encoder)
+            encoder.flush()
+            return output.toByteArray()
+        } catch (e: Exception) {
+            logger.error(e) { "Error encoding payload to Avro bytes: ${e.message}" }
+            throw e
+        }
+    }
+
+    fun byteArrayToAvro(schema: Schema, payload: ByteArray): GenericRecord {
+        try {
+            val reader: DatumReader<GenericRecord> = GenericDatumReader(schema)
+            val input = ByteArrayInputStream(payload)
+            val decoder = DecoderFactory.get().binaryDecoder(input, null)
+            return reader.read(null, decoder)
+        } catch (e: Exception) {
+            logger.error(e) { "Error decoding Avro bytes to payload: ${e.message}" }
+            throw e
+        }
+    }
 
     /**
      * Parses the Payload into an Avro GenericRecord using the provided Avro schema.

@@ -10,12 +10,12 @@ import paladin.router.enums.configuration.Broker
 object SerializerFactory {
     fun fromFormat(format: Broker.ProducerFormat?, enforceSchema: Boolean = false): String {
         return when (format) {
-            Broker.ProducerFormat.STRING, null -> "org.apache.kafka.common.serialization.StringSerializer"
+            Broker.ProducerFormat.STRING, null -> StringSerializer::class.java.name
             Broker.ProducerFormat.JSON -> {
                 if (enforceSchema) {
-                    "io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer"
+                    KafkaJsonSchemaSerializer::class.java.name
                 } else {
-                    "org.apache.kafka.common.serialization.StringSerializer" // Fallback to string for JSON without schema
+                    KafkaJsonSerializer::class.java.name
                 }
             }
 
@@ -23,7 +23,7 @@ object SerializerFactory {
                 if (!enforceSchema) {
                     throw IllegalArgumentException("AVRO serialization requires a schema registry")
                 }
-                "io.confluent.kafka.serializers.KafkaAvroSerializer"
+                KafkaAvroSerializer::class.java.name
             }
         }
     }

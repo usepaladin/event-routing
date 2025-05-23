@@ -6,9 +6,11 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
+import org.apache.avro.generic.GenericRecord
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.springframework.amqp.rabbit.connection.CorrelationData
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import paladin.router.enums.configuration.Broker
 import paladin.router.models.configuration.producers.MessageProducer
 import paladin.router.models.configuration.producers.auth.RabbitEncryptedConfig
 import paladin.router.models.configuration.producers.core.RabbitProducerConfig
@@ -57,7 +59,16 @@ data class RabbitDispatcher(
                     throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
                 }
 
-                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+                val dispatchValue =
+                    schemaService.convertToFormat(payload, topic.value, topic.valueSchema).let transform@{ value ->
+                        // Rabbit does not support Generic Record, convert to Byte Array
+                        if (topic.value == Broker.ProducerFormat.AVRO) {
+                            return@transform schemaService.avroToByteArray(value as GenericRecord)
+                        }
+
+                        value
+                    }
+
                 try {
                     val runnable = Runnable {
                         if (!producerConfig.allowAsync) {
@@ -104,9 +115,26 @@ data class RabbitDispatcher(
                     throw IllegalStateException("Dispatcher is currently not built or connection has failed at the time of event production")
                 }
 
+                val dispatchKey =
+                    schemaService.convertToFormat(payload, topic.key, topic.keySchema).let transform@{ key ->
+                        // Rabbit does not support Generic Record, convert to Byte Array
+                        if (topic.key == Broker.ProducerFormat.AVRO) {
+                            return@transform schemaService.avroToByteArray(key as GenericRecord)
+                        }
 
-                val dispatchKey = schemaService.convertToFormat(key, topic.key, topic.keySchema)
-                val dispatchValue = schemaService.convertToFormat(payload, topic.value, topic.valueSchema)
+                        key
+                    }
+
+                val dispatchValue =
+                    schemaService.convertToFormat(payload, topic.value, topic.valueSchema).let transform@{ value ->
+                        // Rabbit does not support Generic Record, convert to Byte Array
+                        if (topic.value == Broker.ProducerFormat.AVRO) {
+                            return@transform schemaService.avroToByteArray(value as GenericRecord)
+                        }
+
+                        value
+                    }
+
                 try {
                     val runnable = Runnable {
                         if (!producerConfig.allowAsync) {

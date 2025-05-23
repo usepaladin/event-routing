@@ -14,9 +14,14 @@ class DispatchTopicService(
     private val dispatcherTopics = ConcurrentHashMap<String, ConcurrentHashMap<MessageDispatcher, DispatchTopic>>()
 
     fun addDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
-        repository.save(topic.toEntity())
-        dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
-        return topic
+        repository.save(topic.toEntity()).let {
+            topic.apply {
+                id = it.id
+            }
+
+            dispatcherTopics.computeIfAbsent(topic.sourceTopic) { ConcurrentHashMap() }[dispatcher] = topic
+            return topic
+        }
     }
 
     fun updateDispatcherTopic(dispatcher: MessageDispatcher, topic: DispatchTopic): DispatchTopic {
